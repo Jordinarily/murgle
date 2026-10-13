@@ -1,0 +1,32 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Clone project
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+
+      - name: Check Lua syntax
+        run: find . -name '*.lua' -not -path './.git/*' -print0 | xargs -0 -n1 luac5.1 -p
+
+      - name: Run tests
+        run: lua5.1 tests/run.lua
+
+      - name: Test packaging
+        run: python3 tests/test_package.py

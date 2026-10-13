@@ -1,0 +1,6 @@
+{
+  "globals": {
+    "read": ["dofile", "loadfile", "io", "os", "test", "eq"],
+    "write": ["test", "eq"]
+  }
+}

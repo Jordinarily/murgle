@@ -1,0 +1,15 @@
+# Local development files
+/docs/
+/notes/
+__pycache__/
+*.zip
+/.vscode/
+/.release/
+
+# Private workspace metadata and backup archives
+/.*
+*.bundle
+*.checkpoint
+
+# Public addon gallery
+!/.previews/

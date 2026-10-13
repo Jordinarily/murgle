@@ -1,0 +1,22 @@
+## Title: Murgle
+## Interface: 16001
+## Notes: Lightweight quality-of-life improvements for WoW Forever.
+## Author: Jord
+## Version: 1.0.0
+## SavedVariables: MurgleDB
+
+Core.lua
+Defaults.lua
+Locale.lua
+Modules/Interface.lua
+Modules/Minimap.lua
+Modules/Frames.lua
+Modules/Buffs.lua
+Modules/Quests.lua
+Modules/Automation.lua
+Modules/LootVendors.lua
+Modules/Chat.lua
+Modules/Tooltip.lua
+Modules/Errors.lua
+Modules/Sound.lua
+Settings.lua

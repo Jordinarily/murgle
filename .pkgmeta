@@ -1,0 +1,16 @@
+package-as: Murgle
+manual-changelog: CHANGELOG.md
+ignore:
+  - assets
+  - .previews
+  - .github
+  - tests
+  - scripts
+  - docs
+  - notes
+  - .vscode
+  - .gitignore
+  - .luarc.json
+  - .stylua.toml
+  - README.md
+  - CHANGELOG.md
