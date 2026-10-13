@@ -313,6 +313,11 @@ The manifest should be at `Murgle/Murgle.toc`, without another nested Murgle fol
 Enable Murgle in the addon list, then enter `/murgle`. Use `/reload` after updating.
 WoW Forever only; other WoW clients are not supported.
 
+### CurseForge
+
+[View Murgle on CurseForge](https://www.curseforge.com/wow/addons/murgle/preview)
+— project preview; awaiting moderator approval.
+
 ### WowUp
 
 Use Get Addons → Install from URL with:
