@@ -13,3 +13,6 @@ __pycache__/
 
 # Public addon gallery
 !/.previews/
+
+# Public repository configuration
+!/.github/

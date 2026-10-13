@@ -1,5 +1,7 @@
 # Murgle
 
+<img src="assets/branding/murgle-social-preview.png" alt="Murgle logo" width="128" height="128">
+
 Lightweight, native-first quality-of-life improvements for WoW Forever.
 
 Murgle is for players who like Blizzard's UI, but want it cleaner, less intrusive and a little smarter.
@@ -367,7 +369,7 @@ See the [changelog](CHANGELOG.md) for release details.
 
 Murgle is free to use and its functionality is never paywalled.
 
-[![Support Murgle on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/K8I728PRI8)
+[![Support Murgle on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/jordinarily)
 
 Support is completely optional and does not unlock any features.
 
