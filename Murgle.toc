@@ -2,7 +2,8 @@
 ## Interface: 16001
 ## Notes: Lightweight quality-of-life improvements for WoW Forever.
 ## Author: Jord
-## Version: 1.0.0
+## Version: 1.0.1
+## X-Curse-Project-ID: 1742825
 ## SavedVariables: MurgleDB
 
 Core.lua

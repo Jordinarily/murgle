@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 — 2026-10-14
+
+- Updated project branding, distribution links and optional support information.
+- Added CurseForge project metadata for addon managers.
+- Gameplay features are unchanged from 1.0.0.
+
 ## 1.0.0 — 2026-10-12
 
 WoW Forever only.
