@@ -168,7 +168,7 @@ test("interface checkboxes persist choices and reset refreshes cached controls",
                 checks[#checks + 1] = frame
             end
         end
-        eq(#checks, 12)
+        eq(#checks, 13)
         eq(checks[1]:GetChecked(), false)
         checks[1]:SetChecked(true)
         checks[1].scripts.OnClick(checks[1])

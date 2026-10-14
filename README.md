@@ -54,6 +54,7 @@ Remove the parts of the default UI you don't need while keeping Blizzard's under
 - Hide Bag Bar
 - Hide XP bar
 - Hide macro names
+- Fade action bars during combat, including 0% opacity to hide them visually
 - Hide totem timers
 - Hide Talking Head
 - Hide Boss Banner

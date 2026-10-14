@@ -25,6 +25,7 @@ local tests = {
     "tests/test_locale.lua",
     "tests/test_settings.lua",
     "tests/test_interface.lua",
+    "tests/test_action_bar_fade.lua",
     "tests/test_spell_queue.lua",
     "tests/test_experience.lua",
     "tests/test_minimap.lua",

@@ -949,7 +949,125 @@ function Interface.AutoDetectSpellQueueWindow()
     Interface.SetSpellQueueWindow(latency + 150)
 end
 
+local actionBarNames = {
+    "MainActionBar",
+    "MultiBarBottomLeft",
+    "MultiBarBottomRight",
+    "MultiBarLeft",
+    "MultiBarRight",
+    "MultiBar5",
+    "MultiBar6",
+    "MultiBar7",
+}
+local actionBarStates = {}
+local actionBarEvents, actionBarEditManager
+local actionBarFactor = 1
+
+local function readableAlpha(value)
+    return not (issecretvalue and issecretvalue(value)) and type(value) == "number" and value >= 0 and value <= 1
+end
+
+local function writeActionBarAlpha(frame, state, value)
+    state.writing = true
+    frame:SetAlpha(value)
+    state.writing = nil
+end
+
+function Interface.ApplyActionBarFade()
+    local enabled = MurgleDB.interface.fadeActionBars == true and type(hooksecurefunc) == "function"
+    local opacity = MurgleDB.interface.actionBarCombatOpacity
+    if type(opacity) ~= "number" or not (opacity >= 0 and opacity <= 100) then
+        opacity = 100
+    end
+    local manager = EditModeManagerFrame
+    local editing = manager and type(manager.IsEditModeActive) == "function" and manager:IsEditModeActive()
+    actionBarFactor = enabled and InCombatLockdown() and not editing and opacity / 100 or 1
+
+    if enabled then
+        local missing = false
+        for _, name in ipairs(actionBarNames) do
+            local frame = _G[name]
+            if frame and type(frame.GetAlpha) == "function" and type(frame.SetAlpha) == "function" then
+                if not actionBarStates[frame] then
+                    local state = {}
+                    actionBarStates[frame] = state
+                    -- Native opacity writers must not erase the combat fade.
+                    -- Observe their value for restoration without touching secure
+                    -- visibility, mouse handling, bindings or button attributes.
+                    hooksecurefunc(frame, "SetAlpha", function(self, value)
+                        if state.writing or state.original == nil then
+                            return
+                        end
+                        if not readableAlpha(value) then
+                            state.original = nil
+                            return
+                        end
+                        state.original = value
+                        writeActionBarAlpha(self, state, value * actionBarFactor)
+                    end)
+                end
+            else
+                missing = true
+            end
+        end
+        if
+            manager ~= actionBarEditManager
+            and manager
+            and type(manager.EnterEditMode) == "function"
+            and type(manager.ExitEditMode) == "function"
+        then
+            local function refresh()
+                if MurgleDB.interface.fadeActionBars == true then
+                    Interface.ApplyActionBarFade()
+                end
+            end
+            hooksecurefunc(manager, "EnterEditMode", refresh)
+            hooksecurefunc(manager, "ExitEditMode", refresh)
+            actionBarEditManager = manager
+        end
+        if not actionBarEvents then
+            actionBarEvents = CreateFrame("Frame")
+            actionBarEvents:SetScript("OnEvent", function(_, event, addon)
+                if event ~= "ADDON_LOADED" or addon == "Blizzard_ActionBar" or addon == "Blizzard_EditMode" then
+                    Interface.ApplyActionBarFade()
+                end
+            end)
+        end
+        actionBarEvents:RegisterEvent("PLAYER_REGEN_DISABLED")
+        actionBarEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
+        actionBarEvents:RegisterEvent("PLAYER_ENTERING_WORLD")
+        if missing or not actionBarEditManager then
+            actionBarEvents:RegisterEvent("ADDON_LOADED")
+        else
+            actionBarEvents:UnregisterEvent("ADDON_LOADED")
+        end
+    elseif actionBarEvents then
+        actionBarEvents:UnregisterEvent("PLAYER_REGEN_DISABLED")
+        actionBarEvents:UnregisterEvent("PLAYER_REGEN_ENABLED")
+        actionBarEvents:UnregisterEvent("PLAYER_ENTERING_WORLD")
+        actionBarEvents:UnregisterEvent("ADDON_LOADED")
+    end
+
+    for frame, state in pairs(actionBarStates) do
+        if actionBarFactor < 1 then
+            if state.original == nil then
+                local alpha = frame:GetAlpha()
+                if readableAlpha(alpha) then
+                    state.original = alpha
+                end
+            end
+            if state.original ~= nil then
+                writeActionBarAlpha(frame, state, state.original * actionBarFactor)
+            end
+        elseif state.original ~= nil then
+            writeActionBarAlpha(frame, state, state.original)
+            state.original = nil
+        end
+    end
+end
+
 function Interface.ApplyAll()
+    Interface.ApplyActionBarFade()
     Interface.ApplyMacroNames()
     Interface.ApplyMicroMenu()
     Interface.ApplyBagBar()

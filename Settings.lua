@@ -148,6 +148,20 @@ local function interfacePage()
     buffHover:SetPoint("TOPLEFT", 215, -36)
     local macros = checkbox(page, L.HIDE_MACRO_NAMES, "hideMacroNames", 1, Murgle.Interface.ApplyMacroNames)
     macros:SetPoint("TOPLEFT", 215, -58)
+    local actionBars = checkbox(page, L.FADE_ACTION_BARS, "fadeActionBars", 1, Murgle.Interface.ApplyActionBarFade)
+    actionBars:SetPoint("TOPLEFT", 215, -80)
+    helpButton(actionBars, L.FADE_ACTION_BARS_HELP, actionBars.caption)
+    local opacityButtons = {}
+    for index, opacity in ipairs({ 0, 25, 50, 75 }) do
+        local control, caption = button(page, opacity .. "%", 42, function()
+            MurgleDB.interface.actionBarCombatOpacity = opacity
+            Murgle.Interface.ApplyActionBarFade()
+            page:Refresh()
+        end)
+        control:SetSize(42, 25)
+        control:SetPoint("TOPLEFT", 215 + (index - 1) * 47, -106)
+        opacityButtons[opacity] = { control = control, caption = caption }
+    end
     local trackerLabel = label(page, L.TRACKER_VISIBILITY)
     trackerLabel:SetPoint("TOPLEFT", 0, -228)
     local trackerButtons = {}
@@ -207,6 +221,16 @@ local function interfacePage()
         end
         xp:SetChecked(MurgleDB.interface.hideXP == true)
         macros:SetChecked(MurgleDB.interface.hideMacroNames == true)
+        local fading = MurgleDB.interface.fadeActionBars == true
+        actionBars:SetChecked(fading)
+        for opacity, entry in pairs(opacityButtons) do
+            if fading then
+                entry.control:Show()
+            else
+                entry.control:Hide()
+            end
+            setSelected(entry.caption, opacity == MurgleDB.interface.actionBarCombatOpacity)
+        end
         buffHover:SetChecked(MurgleDB.interface.buffTriangleMouseover == true)
     end
     return page
