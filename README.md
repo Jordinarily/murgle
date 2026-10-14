@@ -4,6 +4,8 @@
 
 Lightweight, native-first quality-of-life improvements for WoW Forever.
 
+[GitHub releases](https://github.com/Jordinarily/murgle/releases/latest) · [CurseForge](https://www.curseforge.com/wow/addons/murgle) · WowUp Hub (link coming soon)
+
 Murgle is for players who like Blizzard's UI, but want it cleaner, less intrusive and a little smarter.
 
 It removes unnecessary clutter, automates repetitive interactions and exposes useful native functionality without replacing the game's interface with a large addon framework.
@@ -315,10 +317,11 @@ WoW Forever only; other WoW clients are not supported.
 
 ### CurseForge
 
-[View Murgle on CurseForge](https://www.curseforge.com/wow/addons/murgle/preview)
-— project preview; awaiting moderator approval.
+[View Murgle on CurseForge](https://www.curseforge.com/wow/addons/murgle)
 
 ### WowUp
+
+WowUp Hub listing: link coming soon.
 
 Use Get Addons → Install from URL with:
 
