@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2 — 2026-10-14
+
+- Added optional action-bar fading during combat, with 0%, 25%, 50% and 75% opacity.
+- Bars return to their normal opacity outside combat and in Edit Mode. Keybinds and mouse clicks remain active at 0%.
+
 ## 1.0.1 — 2026-10-14
 
 - Updated project branding, distribution links and optional support information.
