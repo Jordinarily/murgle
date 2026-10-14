@@ -4,6 +4,7 @@
 ## Author: Jord
 ## Version: 1.0.2
 ## X-Curse-Project-ID: 1742825
+## X-Wago-ID: rNkgM4Na
 ## SavedVariables: MurgleDB
 
 Core.lua
