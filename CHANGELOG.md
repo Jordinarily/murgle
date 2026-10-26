@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3 — 2026-10-26
+
+- Added Wago distribution support for tagged releases.
+
 ## 1.0.2 — 2026-10-14
 
 - Added optional action-bar fading during combat, with 0%, 25%, 50% and 75% opacity.
