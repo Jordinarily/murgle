@@ -70,6 +70,9 @@ function Murgle.ApplyAllSettings()
     if Murgle.Interface then
         Murgle.Interface.ApplyAll()
     end
+    if Murgle.Bags then
+        Murgle.Bags.ApplyAll()
+    end
     if Murgle.Minimap then
         Murgle.Minimap.ApplyAll()
     end
@@ -160,6 +163,9 @@ function Murgle.Initialize()
     MurgleDB = Murgle.ApplyDefaults(MurgleDB)
     if Murgle.Interface then
         Murgle.Interface.Initialize()
+    end
+    if Murgle.Bags then
+        Murgle.Bags.Initialize()
     end
     if Murgle.Minimap then
         Murgle.Minimap.Initialize()

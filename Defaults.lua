@@ -5,6 +5,7 @@ Murgle.DEFAULTS = {
     interface = {
         hideMicroMenu = false,
         hideBagBar = false,
+        moveBags = false,
         hideXP = false,
         buffTriangleMouseover = false,
         hideMacroNames = false,

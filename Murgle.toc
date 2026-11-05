@@ -11,6 +11,7 @@ Core.lua
 Defaults.lua
 Locale.lua
 Modules/Interface.lua
+Modules/Bags.lua
 Modules/Minimap.lua
 Modules/Frames.lua
 Modules/Buffs.lua

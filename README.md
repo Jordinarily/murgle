@@ -52,6 +52,7 @@ Remove the parts of the default UI you don't need while keeping Blizzard's under
 
 - Hide Micro Menu
 - Hide Bag Bar
+- Move the combined bag window by dragging its title and remember its position
 - Hide XP bar
 - Hide macro names
 - Fade action bars during combat, including 0% opacity to hide them visually

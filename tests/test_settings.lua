@@ -168,7 +168,7 @@ test("interface checkboxes persist choices and reset refreshes cached controls",
                 checks[#checks + 1] = frame
             end
         end
-        eq(#checks, 13)
+        eq(#checks, 14)
         eq(checks[1]:GetChecked(), false)
         checks[1]:SetChecked(true)
         checks[1].scripts.OnClick(checks[1])
@@ -533,5 +533,28 @@ test("page bulk keeps tooltip error and nameplate modes while changing independe
         eq(MurgleDB.frames.enemyNameplates, "combat")
         eq(MurgleDB.frames.friendlyNameplates, "hidden")
         eq(MurgleDB.tooltip.cursorAnchor, true)
+    end)
+end)
+
+test("bag position settings persist the toggle and reset the saved anchor", function()
+    UI.withAddon(function(M, state)
+        M.Settings.Show()
+        local control
+        for _, frame in ipairs(state.frames) do
+            if frame.kind == "CheckButton" and frame.caption.text == M.L.MOVE_BAGS then
+                control = frame
+            end
+        end
+        assert(control)
+        eq(control:GetChecked(), false)
+        control:SetChecked(true)
+        control.scripts.OnClick(control)
+        eq(MurgleDB.interface.moveBags, true)
+        MurgleDB.interface.bagPosition = { x = 40, y = 20 }
+        clickText(state, M.L.RESET_BAG_POSITION)
+        eq(MurgleDB.interface.bagPosition, nil)
+        eq(MurgleDB.interface.moveBags, true)
+        M.ResetDB()
+        eq(MurgleDB.interface.moveBags, false)
     end)
 end)
