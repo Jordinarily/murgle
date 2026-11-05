@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4 — 2026-11-05
+
+- Added optional dragging and saved positioning for the combined bag window, with a reset to Blizzard placement.
+- Shortened the quest-header setting label to prevent overlap.
+
 ## 1.0.3 — 2026-10-26
 
 - Added Wago distribution support for tagged releases.
