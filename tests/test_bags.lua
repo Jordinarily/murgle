@@ -36,6 +36,11 @@ local function withBags(fn, saved)
     function bag:SetUserPlaced(value)
         self.placed = value
     end
+    bag.TitleContainer = {
+        GetFrameLevel = function()
+            return 510
+        end,
+    }
     local root = {}
     function root:GetCenter()
         return 500, 400
@@ -71,6 +76,15 @@ local function withBags(fn, saved)
         CreateFrame = function(kind, name, parent)
             local handle = H.newEventFrame()
             handle.parent = parent
+            function handle:SetAllPoints(target)
+                self.allPoints = target
+            end
+            function handle:SetFrameLevel(level)
+                self.level = level
+            end
+            function handle:EnableMouse(enabled)
+                self.mouse = enabled
+            end
             function handle:SetSize() end
             function handle:SetPoint() end
             function handle:RegisterForDrag() end
@@ -306,5 +320,35 @@ test("bag title clicks retain the native menu while a drag does not click it", f
             handle.scripts.OnClick()
             eq(opened, 2)
         end)
+    end, { moveBags = true })
+end)
+
+test("bag title drag target covers the native title above its high frame layers", function()
+    withBags(function(B, bag, handles)
+        B.ApplyAll()
+        local control = handles[1]
+        -- The native title is at level 510, above ordinary bag children. A
+        -- mouse target below it cannot reliably receive the user's title drag.
+        eq(control.parent, bag.TitleContainer)
+        eq(control.allPoints, bag.TitleContainer)
+        eq(control.mouse, true)
+        assert(control.level > bag.TitleContainer:GetFrameLevel(), "drag target below native title")
+        control.scripts.OnDragStart()
+        eq(bag.moving, true)
+        control.scripts.OnDragStop()
+        eq(MurgleDB.interface.bagPosition.x, 175)
+    end, { moveBags = true })
+end)
+
+test("bag dragging skips a missing native title and retries on explicit apply", function()
+    withBags(function(B, bag, handles)
+        local title = bag.TitleContainer
+        bag.TitleContainer = nil
+        B.ApplyAll()
+        eq(#handles, 0)
+        bag.TitleContainer = title
+        B.ApplyAll()
+        eq(#handles, 1)
+        eq(handles[1].parent, title)
     end, { moveBags = true })
 end)

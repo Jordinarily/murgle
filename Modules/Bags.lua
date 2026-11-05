@@ -175,6 +175,8 @@ local function apply()
     end
     if
         not usable(ContainerFrameCombinedBags)
+        or not ContainerFrameCombinedBags.TitleContainer
+        or type(ContainerFrameCombinedBags.TitleContainer.GetFrameLevel) ~= "function"
         or type(UpdateContainerFrameAnchors) ~= "function"
         or type(hooksecurefunc) ~= "function"
         or not ContainerFrameSettingsManager
@@ -184,11 +186,14 @@ local function apply()
     end
     if not handle then
         bag = ContainerFrameCombinedBags
-        -- Forever's shared ContainerFrame.xml marks this frame movable. A child
-        -- handle preserves native item, portrait, close and search interactions.
-        handle = CreateFrame("Button", nil, bag)
-        handle:SetSize(140, 22)
-        handle:SetPoint("TOP", bag, "TOP", 0, -4)
+        -- The native title is at frame level 510, above ordinary bag children.
+        -- Parent to that title and cover its real bounds so native art cannot
+        -- obscure the mouse target; portrait and close controls lie outside it.
+        local title = bag.TitleContainer
+        handle = CreateFrame("Button", nil, title)
+        handle:SetAllPoints(title)
+        handle:SetFrameLevel(title:GetFrameLevel() + 1)
+        handle:EnableMouse(true)
         handle:RegisterForDrag("LeftButton")
         handle:SetScript("OnMouseDown", function()
             draggedClick = false
