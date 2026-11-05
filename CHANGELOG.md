@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0 — 2026-11-05
+
+- Added an opt-in Convenience page for native bag disenchanting, class Train All, bulk buying and cost-reviewed restock targets.
+- Added selected loot and enchant confirmations, direct flight-map opening, spell-rank warnings and highest-value quest reward markers.
+- Added a shortcut to Blizzard click-casting settings; new options start disabled and preserve native combat and confirmation boundaries.
+
 ## 1.0.5 — 2026-11-05
 
 - Fixed the combined bag drag control to cover the native title and receive mouse input above its frame layers.
