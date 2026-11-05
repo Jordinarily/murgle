@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5 — 2026-11-05
+
+- Fixed the combined bag drag control to cover the native title and receive mouse input above its frame layers.
+
 ## 1.0.4 — 2026-11-05
 
 - Added optional dragging and saved positioning for the combined bag window, with a reset to Blizzard placement.
