@@ -605,7 +605,80 @@ local function framesPage()
     return page
 end
 
+local function conveniencePage()
+    local page = newPage(L.CATEGORY_CONVENIENCE)
+    local controls = {}
+    local choices = {
+        { L.TRAIN_ALL, "automation", "trainAll", Murgle.Trainer.ApplyAll, L.TRAIN_ALL_HELP },
+        { L.WARN_LOW_RANK_LABEL, "automation", "warnLowRank", Murgle.SpellRanks.ApplyAll, L.WARN_LOW_RANK_HELP },
+        {
+            L.SKIP_SERVICE_GOSSIP,
+            "automation",
+            "skipServiceGossip",
+            Murgle.Interactions.ApplyAll,
+            L.SKIP_SERVICE_GOSSIP_HELP,
+        },
+        { L.DISENCHANT_CLICK, "lootVendors", "disenchantClick", Murgle.ItemActions.ApplyAll, L.DISENCHANT_CLICK_HELP },
+        { L.BULK_BUY, "lootVendors", "bulkBuy", Murgle.Commerce.ApplyAll, L.BULK_BUY_HELP },
+        { L.RESTOCK, "lootVendors", "restock", Murgle.Commerce.ApplyAll, L.RESTOCK_HELP },
+        {
+            L.CONFIRM_LOOT_PICKUP,
+            "automation",
+            "confirmLootPickup",
+            Murgle.Interactions.ApplyAll,
+            L.CONFIRM_LOOT_PICKUP_HELP,
+        },
+        {
+            L.CONFIRM_LOOT_ROLLS,
+            "automation",
+            "confirmLootRolls",
+            Murgle.Interactions.ApplyAll,
+            L.CONFIRM_LOOT_ROLLS_HELP,
+        },
+        {
+            L.CONFIRM_ENCHANT_REPLACE,
+            "automation",
+            "confirmEnchantReplace",
+            Murgle.Interactions.ApplyAll,
+            L.CONFIRM_ENCHANT_REPLACE_HELP,
+        },
+        { L.REWARD_VALUES, "quests", "rewardValues", Murgle.Rewards.ApplyAll, L.REWARD_VALUES_HELP },
+    }
+    for row, choice in ipairs(choices) do
+        local control = checkbox(page, choice[1], choice[3], row, choice[4], choice[2])
+        control:SetPoint("TOPLEFT", 0, -36 - (row - 1) * 24)
+        helpButton(control, choice[5], control.caption)
+        controls[row] = control
+    end
+    local clear = button(page, L.CLEAR_RESTOCK, 200, Murgle.Commerce.ClearRestockTargets)
+    clear:SetSize(200, 25)
+    clear:SetPoint("TOPLEFT", 0, -280)
+    local casting = button(page, L.CLICK_CASTING, 205, Murgle.Interactions.OpenClickCasting)
+    casting:SetSize(205, 25)
+    casting:SetPoint("TOPLEFT", 0, -310)
+    local ranks = button(page, L.CHECK_SPELL_RANKS, 190, Murgle.SpellRanks.Check)
+    ranks:SetSize(190, 25)
+    ranks:SetPoint("TOPLEFT", 215, -310)
+    function page:Refresh()
+        for row, choice in ipairs(choices) do
+            controls[row]:SetChecked(MurgleDB[choice[2]][choice[3]] == true)
+        end
+        if MurgleDB.lootVendors.restock == true then
+            clear:Show()
+        else
+            clear:Hide()
+        end
+        if MurgleDB.automation.warnLowRank == true then
+            ranks:Show()
+        else
+            ranks:Hide()
+        end
+    end
+    return page
+end
+
 local pageFactories = {
+    Convenience = conveniencePage,
     Frames = framesPage,
     Interface = function()
         return interfacePage()
@@ -767,6 +840,7 @@ local function createWindow()
     addNavigation("ErrorsSound", L.CATEGORY_ERRORS_SOUND, 7)
     addNavigation("Quests", L.CATEGORY_QUESTS, 8)
     addNavigation("Frames", L.CATEGORY_FRAMES, 9)
+    addNavigation("Convenience", L.CATEGORY_CONVENIENCE, 10)
     UISpecialFrames[#UISpecialFrames + 1] = "MurgleSettingsFrame"
     Settings.SelectCategory(selected)
 end

@@ -18,6 +18,12 @@ Modules/Buffs.lua
 Modules/Quests.lua
 Modules/Automation.lua
 Modules/LootVendors.lua
+Modules/Trainer.lua
+Modules/ItemActions.lua
+Modules/Commerce.lua
+Modules/Interactions.lua
+Modules/SpellRanks.lua
+Modules/Rewards.lua
 Modules/Chat.lua
 Modules/Tooltip.lua
 Modules/Errors.lua

@@ -69,6 +69,32 @@ Remove the parts of the default UI you don't need while keeping Blizzard's under
 
 ---
 
+### Small native conveniences
+
+The Convenience settings page adds optional controls to Blizzard's existing
+windows. All of these options start off.
+
+- Alt-click a green weapon or armor item in Blizzard bags to Disenchant it.
+  Requires Enchanting and works outside combat; blue and epic items and native
+  destruction confirmations remain protected.
+- Train all available class spells using a button at class trainers.
+- Shift-click merchant items to buy quantities across stacks. With restocking
+  enabled, Alt-Shift-click saves a desired total quantity; the merchant's
+  Restock button shows the purchases and cost before you confirm.
+- Open an unambiguous flight-master map directly, without choosing a flight.
+- Optionally confirm an already chosen loot roll, bind-on-pickup loot, or
+  replacing an enchant. These are separate options with Shift/combat bypass.
+- Warn about lower spell ranks on visible Blizzard action buttons without
+  changing them, and mark a quest reward with the highest total vendor value.
+- Open Blizzard's click-casting settings to configure your own dispel bindings.
+
+Bulk purchases use ordinary gold offers and full vendor-pack quantities, and
+stop if merchant, inventory or money information changes unexpectedly. They
+never buy merely because you opened a merchant. Lockbox shortcuts and automatic
+acceptance of disenchant destruction warnings are not included.
+
+---
+
 ### A cleaner minimap
 
 Keep Blizzard's minimap, but strip away unwanted artwork and buttons.

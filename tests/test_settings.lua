@@ -558,3 +558,62 @@ test("bag position settings persist the toggle and reset the saved anchor", func
         eq(MurgleDB.interface.moveBags, false)
     end)
 end)
+
+test("convenience settings expose independent native features and preserve defaults on reset", function()
+    UI.withAddon(function(M, state)
+        M.Settings.Show()
+        M.Settings.SelectCategory("Convenience")
+        local found = {}
+        for _, frame in ipairs(state.frames) do
+            if frame.kind == "CheckButton" and frame.caption then
+                found[frame.caption.text] = frame
+            end
+        end
+        local checks = {
+            { M.L.TRAIN_ALL, "automation", "trainAll" },
+            { M.L.WARN_LOW_RANK_LABEL, "automation", "warnLowRank" },
+            { M.L.SKIP_SERVICE_GOSSIP, "automation", "skipServiceGossip" },
+            { M.L.DISENCHANT_CLICK, "lootVendors", "disenchantClick" },
+            { M.L.BULK_BUY, "lootVendors", "bulkBuy" },
+            { M.L.RESTOCK, "lootVendors", "restock" },
+            { M.L.CONFIRM_LOOT_PICKUP, "automation", "confirmLootPickup" },
+            { M.L.CONFIRM_LOOT_ROLLS, "automation", "confirmLootRolls" },
+            { M.L.CONFIRM_ENCHANT_REPLACE, "automation", "confirmEnchantReplace" },
+            { M.L.REWARD_VALUES, "quests", "rewardValues" },
+        }
+        for _, item in ipairs(checks) do
+            local checkbox = assert(found[item[1]], item[1] .. " missing")
+            eq(checkbox:GetChecked(), false)
+            checkbox:SetChecked(true)
+            checkbox.scripts.OnClick(checkbox)
+            eq(MurgleDB[item[2]][item[3]], true)
+        end
+        MurgleDB.lootVendors.restockTargets[123] = 20
+        clickText(state, M.L.CLEAR_RESTOCK)
+        eq(next(MurgleDB.lootVendors.restockTargets), nil)
+        M.ResetDB()
+        for _, item in ipairs(checks) do
+            eq(MurgleDB[item[2]][item[3]], false)
+        end
+    end)
+end)
+
+test("click-casting shortcut opens only native settings outside combat without altering bindings", function()
+    UI.withAddon(function(M, state)
+        local calls = 0
+        local H = dofile("tests/helpers.lua")
+        H.withGlobals({
+            ToggleClickBindingFrame = function()
+                calls = calls + 1
+            end,
+        }, function()
+            M.Settings.Show()
+            M.Settings.SelectCategory("Convenience")
+            clickText(state, M.L.CLICK_CASTING)
+            eq(calls, 1)
+            state.combat = true
+            clickText(state, M.L.CLICK_CASTING)
+            eq(calls, 1)
+        end)
+    end)
+end)

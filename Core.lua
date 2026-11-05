@@ -91,6 +91,24 @@ function Murgle.ApplyAllSettings()
     if Murgle.LootVendors then
         Murgle.LootVendors.ApplyAll()
     end
+    if Murgle.Trainer then
+        Murgle.Trainer.ApplyAll()
+    end
+    if Murgle.ItemActions then
+        Murgle.ItemActions.ApplyAll()
+    end
+    if Murgle.Commerce then
+        Murgle.Commerce.ApplyAll()
+    end
+    if Murgle.Interactions then
+        Murgle.Interactions.ApplyAll()
+    end
+    if Murgle.SpellRanks then
+        Murgle.SpellRanks.ApplyAll()
+    end
+    if Murgle.Rewards then
+        Murgle.Rewards.ApplyAll()
+    end
     if Murgle.Chat then
         Murgle.Chat.ApplyAll()
     end
@@ -184,6 +202,24 @@ function Murgle.Initialize()
     end
     if Murgle.LootVendors then
         Murgle.LootVendors.Initialize()
+    end
+    if Murgle.Trainer then
+        Murgle.Trainer.Initialize()
+    end
+    if Murgle.ItemActions then
+        Murgle.ItemActions.Initialize()
+    end
+    if Murgle.Commerce then
+        Murgle.Commerce.Initialize()
+    end
+    if Murgle.Interactions then
+        Murgle.Interactions.Initialize()
+    end
+    if Murgle.SpellRanks then
+        Murgle.SpellRanks.Initialize()
+    end
+    if Murgle.Rewards then
+        Murgle.Rewards.Initialize()
     end
     if Murgle.Chat then
         Murgle.Chat.Initialize()
