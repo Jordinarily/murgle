@@ -28,7 +28,6 @@ Modules/Chat.lua
 Modules/Tooltip.lua
 Modules/Errors.lua
 Modules/Sound.lua
-Modules/ModifierPaging.lua
 Modules/NativeOptions.lua
 Modules/ItemDetails.lua
 Modules/Ammo.lua

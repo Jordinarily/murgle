@@ -95,33 +95,13 @@ acceptance of disenchant destruction warnings are not included.
 
 ---
 
-### Hold-to-page action bars
-
-**Action paging** adds optional Shift/Ctrl/Alt page choices for Blizzard's main
-buttons. Shift starts at page 2, Ctrl at page 3, and Alt off. Release returns to
-your native page, normally page 1. Ctrl takes priority over Shift, then Alt.
-
-Selected modifier combinations temporarily route the main bar's existing
-unmodified keyboard/mouse keys to its actions. This takes precedence over those
-modified keys' other bindings while paging; saved bindings are never rewritten.
-Additional disabled modifiers keep native behavior. Stances/forms (including
-normal warrior stances), bonus, vehicle, override and other special bars stay
-native. The feature starts off and refuses incompatible page ownership. Setup
-and disabling wait until combat ends; the held modifier changes use Blizzard's
-secure state controller in combat.
-
-* * *
-
 ### More native options
 
 - **Quests:** Show native quest levels uses WoW's existing quest-list and text setting.
 - **Items:** Optional equipped-ammunition totals above the backpack button, plus item IDs and per-item vendor values in the main Blizzard tooltip.
 - **Items:** Enable manual vendor marks, pick up an eligible item, then click **Mark cursor item**. Marks apply to that item type. Return it to your bag, open a merchant, then use **Sell marked** on the Items page to review and confirm up to 12 stacks. Equipment, bags, quest items, bound/refundable items and qualities above uncommon are excluded. Hold Shift to bypass selling. Clearing marks and Reset Murgle remove the saved marks; normal grey-junk automation stays separate.
-- **Graphics:** Explicit HDR output, render format, brightness and tone-mapping controls, plus ground-effect density/distance, sharpening, glow and death desaturation. No graphics values change just by installing Murgle or opening this page. Apply writes one value and shows the client's read-back; Default resets only that value using the client default. Reset Murgle leaves these native preferences and the quest-level setting alone.
 
 Item feature toggles start off. Missing or restricted native settings remain unavailable.
-HDR requires a supported display and rendering path. Higher foliage density can cost
-performance; these controls make no automatic performance adjustments.
 
 * * *
 

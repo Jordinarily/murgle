@@ -618,100 +618,21 @@ test("click-casting shortcut opens only native settings outside combat without a
     end)
 end)
 
-test("next version native options are lazy and graphics edits require explicit apply", function()
+test("removed graphics and paging pages cannot construct controls or secure state", function()
     UI.withAddon(function(M, state)
-        local writes = 0
-        C_CVar = {
-            GetCVarInfo = function(name)
-                return name == "HDRFactor" and "2" or "0", nil, nil, nil, false, false, false
-            end,
-            SetCVar = function()
-                writes = writes + 1
-            end,
-            GetCVarDefault = function()
-                return "0"
-            end,
-        }
-        eq(MurgleDB.lootVendors.ammoCount, false)
-        eq(MurgleDB.lootVendors.markedJunk, false)
-        eq(MurgleDB.tooltip.itemDetails, false)
+        eq(M.ModifierPaging, nil)
+        eq(M.NativeOptions.Read("HDROutput"), nil)
+        eq(M.NativeOptions.Read("groundEffectDensity"), nil)
         M.Settings.Show()
+        local count = #state.frames
         M.Settings.SelectCategory("Graphics")
-        eq(writes, 0)
-        local edits = 0
-        for _, f in ipairs(state.frames) do
-            if f.kind == "EditBox" then
-                edits = edits + 1
-            end
-        end
-        eq(edits, 5)
-        M.ResetDB()
-        eq(writes, 0, "general reset must leave native graphics preferences alone")
-        M.Settings.SelectCategory("Items")
-        eq(writes, 0)
-    end)
-end)
-
-test("reset does not register hidden Graphics page events", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Graphics")
-        local graphics
-        for _, f in ipairs(state.frames) do
-            if f.events.CVAR_UPDATE then
-                graphics = f
-            end
-        end
-        assert(graphics)
-        M.Settings.SelectCategory("Items")
-        -- Real WoW propagates OnHide; execute it explicitly in this UI fixture.
-        graphics.scripts.OnHide(graphics)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(graphics.events.CVAR_UPDATE, nil)
-    end)
-end)
-
-test("switching graphics groups replaces unfinished input with the new setting value", function()
-    UI.withAddon(function(M, state)
-        C_CVar = {
-            GetCVarInfo = function()
-                return "0", nil, nil, nil, false, false, false
-            end,
-        }
-        M.Settings.Show()
-        M.Settings.SelectCategory("Graphics")
-        local edit
-        for _, f in ipairs(state.frames) do
-            if f.kind == "EditBox" then
-                edit = f
-                break
-            end
-        end
-        assert(edit)
-        edit.focused = true
-        edit:SetText("999")
-        clickText(state, M.L.HDR_BRIGHTNESS)
-        eq(edit:GetText(), "0")
-        eq(edit:HasFocus(), false)
-    end)
-end)
-
-test("modifier paging starts off and exposes configurable pages without changing saved bindings", function()
-    UI.withAddon(function(M, state)
-        eq(MurgleDB.interface.modifierPaging, false)
-        eq(MurgleDB.interface.pagingShift, 2)
-        eq(MurgleDB.interface.pagingCtrl, 3)
-        eq(MurgleDB.interface.pagingAlt, 0)
-        M.Settings.Show()
         M.Settings.SelectCategory("ActionPaging")
-        local found = false
-        for _, frame in ipairs(state.frames) do
-            if frame.kind == "CheckButton" and frame.caption and frame.caption.text == M.L.MODIFIER_PAGING then
-                found = true
-                eq(frame:GetChecked(), false)
-            end
+        eq(#state.frames, count)
+        M.Settings.SelectCategory("Items")
+        M.Settings.SelectCategory("Interface")
+        for _, f in ipairs(state.frames) do
+            assert(f.kind ~= "EditBox", "removed graphics inputs must not survive page changes")
+            eq(f.events.CVAR_UPDATE, nil)
         end
-        eq(found, true)
     end)
 end)

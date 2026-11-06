@@ -677,107 +677,6 @@ local function conveniencePage()
     return page
 end
 
-local function graphicsPage()
-    local page = newPage(L.CATEGORY_GRAPHICS)
-    local groupIndex, rows = 1, {}
-    local status = label(page, "", 11)
-    status:SetPoint("TOPLEFT", 0, -310)
-    status:SetSize(415, 28)
-    helpButton(page, L.NATIVE_OPTIONS_HELP, status)
-    local function accepted(value)
-        status:SetText(value and string.format(L.NATIVE_CHANGED, value) or L.NATIVE_REJECTED)
-    end
-    for index, group in ipairs(Murgle.NativeOptions.Groups) do
-        local i = index
-        local select = button(page, L[group[1]], 132, function()
-            groupIndex = i
-            page:Refresh()
-        end)
-        select:SetPoint("TOPLEFT", (index - 1) * 140, -36)
-    end
-    for index = 1, 5 do
-        local row = {}
-        row.caption = label(page, "", 11)
-        row.caption:SetPoint("TOPLEFT", 0, -82 - (index - 1) * 43)
-        local edit = CreateFrame("EditBox", nil, page)
-        edit:SetSize(62, 25)
-        edit:SetPoint("TOPLEFT", 186, -76 - (index - 1) * 43)
-        edit:SetAutoFocus(false)
-        edit:SetMaxLetters(12)
-        edit:SetFont(STANDARD_TEXT_FONT, 12)
-        edit:SetJustifyH("CENTER")
-        local bg = edit:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints(edit)
-        bg:SetColorTexture(unpack(COLORS.border))
-        edit:SetScript("OnEscapePressed", function(self)
-            self:ClearFocus()
-            page:Refresh()
-        end)
-        row.edit = edit
-        row.apply = button(page, L.NATIVE_APPLY, 62, function()
-            edit:ClearFocus()
-            accepted(Murgle.NativeOptions.Set(row.name, edit:GetText()))
-            page:Refresh()
-        end)
-        row.apply:SetPoint("LEFT", edit, "RIGHT", 5, 0)
-        row.default = button(page, L.NATIVE_DEFAULT, 78, function()
-            edit:ClearFocus()
-            accepted(Murgle.NativeOptions.Reset(row.name))
-            page:Refresh()
-        end)
-        row.default:SetPoint("LEFT", row.apply, "RIGHT", 5, 0)
-        rows[index] = row
-    end
-    function page:Refresh()
-        if selected == "Graphics" and window and window:IsShown() then
-            self:RegisterEvent("CVAR_UPDATE")
-        else
-            self:UnregisterEvent("CVAR_UPDATE")
-        end
-        local group = Murgle.NativeOptions.Groups[groupIndex]
-        for index, row in ipairs(rows) do
-            local entry = group[index + 1]
-            local name = entry and entry[1]
-            if row.name ~= name then
-                row.edit:ClearFocus()
-            end
-            row.name = name
-            local value, writable
-            if row.name then
-                value, writable = Murgle.NativeOptions.Read(row.name)
-            end
-            row.caption:SetText(
-                row.name and (L["NATIVE_" .. row.name] .. (value and "" or " - " .. L.NATIVE_UNAVAILABLE)) or ""
-            )
-            if value then
-                if not row.edit:HasFocus() then
-                    row.edit:SetText(value)
-                end
-                row.edit:Show()
-            else
-                row.edit:Hide()
-            end
-            if value and writable then
-                row.apply:Show()
-                row.default:Show()
-            else
-                row.apply:Hide()
-                row.default:Hide()
-            end
-        end
-    end
-    page:SetScript("OnShow", function()
-        page:Refresh()
-    end)
-    page:SetScript("OnHide", function()
-        page:UnregisterEvent("CVAR_UPDATE")
-    end)
-    page:SetScript("OnEvent", function()
-        page:Refresh()
-    end)
-    return page
-end
-
 local function itemsPage()
     local page = newPage(L.CATEGORY_ITEMS)
     local ammo = checkbox(page, L.AMMO_COUNT, "ammoCount", 1, Murgle.Ammo.ApplyAll, "lootVendors")
@@ -822,51 +721,7 @@ local function itemsPage()
     return page
 end
 
-local function actionPagingPage()
-    local page = newPage(L.CATEGORY_ACTION_PAGING)
-    local enabled = checkbox(page, L.MODIFIER_PAGING, "modifierPaging", 1, Murgle.ModifierPaging.ApplyAll)
-    helpButton(page, L.MODIFIER_PAGING_HELP, enabled.caption)
-    local choices = {}
-    for row, option in ipairs({
-        { "pagingShift", L.PAGING_SHIFT },
-        { "pagingCtrl", L.PAGING_CTRL },
-        { "pagingAlt", L.PAGING_ALT },
-    }) do
-        local key = option[1]
-        local heading = label(page, option[2])
-        heading:SetPoint("TOPLEFT", 0, -88 - (row - 1) * 62)
-        choices[key] = {}
-        for value = 0, 6 do
-            local chosen = value
-            local control, caption = button(page, value == 0 and L.PAGING_OFF or tostring(value), 45, function()
-                MurgleDB.interface[key] = chosen
-                Murgle.ModifierPaging.ApplyAll()
-                page:Refresh()
-            end)
-            control:SetPoint("TOPLEFT", value * 51, -110 - (row - 1) * 62)
-            choices[key][value] = caption
-        end
-    end
-    local note = label(page, "", 11)
-    note:SetSize(410, 65)
-    note:SetPoint("TOPLEFT", 0, -283)
-    function page:Refresh()
-        enabled:SetChecked(MurgleDB.interface.modifierPaging == true)
-        local available = Murgle.ModifierPaging.Available()
-        enabled:EnableMouse(available == true or MurgleDB.interface.modifierPaging == true)
-        note:SetText(available and L.PAGING_NATIVE_RETURN or L.PAGING_UNAVAILABLE)
-        for key, captions in pairs(choices) do
-            for value, caption in pairs(captions) do
-                setSelected(caption, MurgleDB.interface[key] == value)
-            end
-        end
-    end
-    return page
-end
-
 local pageFactories = {
-    ActionPaging = actionPagingPage,
-    Graphics = graphicsPage,
     Items = itemsPage,
     Convenience = conveniencePage,
     Frames = framesPage,
@@ -974,7 +829,7 @@ end
 
 local function createWindow()
     window = CreateFrame("Frame", "MurgleSettingsFrame", UIParent)
-    window:SetSize(650, 500)
+    window:SetSize(650, 470)
     window:SetPoint("CENTER")
     window:SetFrameStrata("DIALOG")
     window:EnableMouse(true)
@@ -1044,9 +899,7 @@ local function createWindow()
     addNavigation("Quests", L.CATEGORY_QUESTS, 8)
     addNavigation("Frames", L.CATEGORY_FRAMES, 9)
     addNavigation("Convenience", L.CATEGORY_CONVENIENCE, 10)
-    addNavigation("Graphics", L.CATEGORY_GRAPHICS, 11)
-    addNavigation("Items", L.CATEGORY_ITEMS, 12)
-    addNavigation("ActionPaging", L.CATEGORY_ACTION_PAGING, 13)
+    addNavigation("Items", L.CATEGORY_ITEMS, 11)
     UISpecialFrames[#UISpecialFrames + 1] = "MurgleSettingsFrame"
     Settings.SelectCategory(selected)
 end
