@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1 — 2026-11-06
+
+- Removed the broken graphics settings page and modifier action-bar paging. These features remain unavailable pending fixes.
+
 ## 1.3.0 — 2026-11-06
 
 - Added opt-in hold-to-page controls for Blizzard main action buttons, with configurable Shift/Ctrl/Alt pages and reversible temporary modified key bindings.
