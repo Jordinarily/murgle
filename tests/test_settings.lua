@@ -696,3 +696,22 @@ test("switching graphics groups replaces unfinished input with the new setting v
         eq(edit:HasFocus(), false)
     end)
 end)
+
+test("modifier paging starts off and exposes configurable pages without changing saved bindings", function()
+    UI.withAddon(function(M, state)
+        eq(MurgleDB.interface.modifierPaging, false)
+        eq(MurgleDB.interface.pagingShift, 2)
+        eq(MurgleDB.interface.pagingCtrl, 3)
+        eq(MurgleDB.interface.pagingAlt, 0)
+        M.Settings.Show()
+        M.Settings.SelectCategory("ActionPaging")
+        local found = false
+        for _, frame in ipairs(state.frames) do
+            if frame.kind == "CheckButton" and frame.caption and frame.caption.text == M.L.MODIFIER_PAGING then
+                found = true
+                eq(frame:GetChecked(), false)
+            end
+        end
+        eq(found, true)
+    end)
+end)

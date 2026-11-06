@@ -1,6 +1,16 @@
 local _, Murgle = ...
 
 local EN = {
+    CATEGORY_ACTION_PAGING = "Action paging",
+    MODIFIER_PAGING = "Hold modifiers to change action page",
+    MODIFIER_PAGING_HELP = "Uses Blizzard's main action buttons. Shift defaults to page 2 and Ctrl to page 3; release returns to your native page (normally 1). Ctrl wins over Shift, then Alt. Selected modifier combinations temporarily use the main bar's unmodified key bindings and take precedence over their existing modified bindings. Saved bindings are never rewritten. Additional disabled modifiers, stances/forms, bonus/vehicle/override/possess/temp-shapeshift bars and pet battles stay native. Disable restores native pages and bindings; setup/disable wait until combat ends. Incompatible or unavailable action bars are left alone.",
+    PAGING_SHIFT = "Shift",
+    PAGING_CTRL = "Ctrl",
+    PAGING_ALT = "Alt",
+    PAGING_OFF = "Off",
+    PAGING_UNAVAILABLE = "Unavailable: native keyboard action buttons or secure paging APIs are missing or owned by another addon.",
+    PAGING_NATIVE_RETURN = "Release returns to your native action page.\nSaved key bindings remain unchanged.",
+
     CATEGORY_GRAPHICS = "Graphics",
     CATEGORY_ITEMS = "Items",
     HDR_OUTPUT = "HDR output",

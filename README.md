@@ -95,6 +95,23 @@ acceptance of disenchant destruction warnings are not included.
 
 ---
 
+### Hold-to-page action bars
+
+**Action paging** adds optional Shift/Ctrl/Alt page choices for Blizzard's main
+buttons. Shift starts at page 2, Ctrl at page 3, and Alt off. Release returns to
+your native page, normally page 1. Ctrl takes priority over Shift, then Alt.
+
+Selected modifier combinations temporarily route the main bar's existing
+unmodified keyboard/mouse keys to its actions. This takes precedence over those
+modified keys' other bindings while paging; saved bindings are never rewritten.
+Additional disabled modifiers keep native behavior. Stances/forms (including
+normal warrior stances), bonus, vehicle, override and other special bars stay
+native. The feature starts off and refuses incompatible page ownership. Setup
+and disabling wait until combat ends; the held modifier changes use Blizzard's
+secure state controller in combat.
+
+* * *
+
 ### More native options
 
 - **Quests:** Show native quest levels uses WoW's existing quest-list and text setting.

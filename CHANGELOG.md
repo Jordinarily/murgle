@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0 — 2026-11-06
+
+- Added opt-in hold-to-page controls for Blizzard main action buttons, with configurable Shift/Ctrl/Alt pages and reversible temporary modified key bindings.
+- Native stance, form, bonus, vehicle, override and other special action bars retain their normal paging.
+
 ## 1.2.0 — 2026-11-06
 
 - Added explicit HDR and world-effect controls using native graphics preferences, including ground-effect density and distance.

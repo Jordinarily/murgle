@@ -822,7 +822,50 @@ local function itemsPage()
     return page
 end
 
+local function actionPagingPage()
+    local page = newPage(L.CATEGORY_ACTION_PAGING)
+    local enabled = checkbox(page, L.MODIFIER_PAGING, "modifierPaging", 1, Murgle.ModifierPaging.ApplyAll)
+    helpButton(page, L.MODIFIER_PAGING_HELP, enabled.caption)
+    local choices = {}
+    for row, option in ipairs({
+        { "pagingShift", L.PAGING_SHIFT },
+        { "pagingCtrl", L.PAGING_CTRL },
+        { "pagingAlt", L.PAGING_ALT },
+    }) do
+        local key = option[1]
+        local heading = label(page, option[2])
+        heading:SetPoint("TOPLEFT", 0, -88 - (row - 1) * 62)
+        choices[key] = {}
+        for value = 0, 6 do
+            local chosen = value
+            local control, caption = button(page, value == 0 and L.PAGING_OFF or tostring(value), 45, function()
+                MurgleDB.interface[key] = chosen
+                Murgle.ModifierPaging.ApplyAll()
+                page:Refresh()
+            end)
+            control:SetPoint("TOPLEFT", value * 51, -110 - (row - 1) * 62)
+            choices[key][value] = caption
+        end
+    end
+    local note = label(page, "", 11)
+    note:SetSize(410, 65)
+    note:SetPoint("TOPLEFT", 0, -283)
+    function page:Refresh()
+        enabled:SetChecked(MurgleDB.interface.modifierPaging == true)
+        local available = Murgle.ModifierPaging.Available()
+        enabled:EnableMouse(available == true or MurgleDB.interface.modifierPaging == true)
+        note:SetText(available and L.PAGING_NATIVE_RETURN or L.PAGING_UNAVAILABLE)
+        for key, captions in pairs(choices) do
+            for value, caption in pairs(captions) do
+                setSelected(caption, MurgleDB.interface[key] == value)
+            end
+        end
+    end
+    return page
+end
+
 local pageFactories = {
+    ActionPaging = actionPagingPage,
     Graphics = graphicsPage,
     Items = itemsPage,
     Convenience = conveniencePage,
@@ -931,7 +974,7 @@ end
 
 local function createWindow()
     window = CreateFrame("Frame", "MurgleSettingsFrame", UIParent)
-    window:SetSize(650, 470)
+    window:SetSize(650, 500)
     window:SetPoint("CENTER")
     window:SetFrameStrata("DIALOG")
     window:EnableMouse(true)
@@ -1003,6 +1046,7 @@ local function createWindow()
     addNavigation("Convenience", L.CATEGORY_CONVENIENCE, 10)
     addNavigation("Graphics", L.CATEGORY_GRAPHICS, 11)
     addNavigation("Items", L.CATEGORY_ITEMS, 12)
+    addNavigation("ActionPaging", L.CATEGORY_ACTION_PAGING, 13)
     UISpecialFrames[#UISpecialFrames + 1] = "MurgleSettingsFrame"
     Settings.SelectCategory(selected)
 end
