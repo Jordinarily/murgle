@@ -618,16 +618,18 @@ test("click-casting shortcut opens only native settings outside combat without a
     end)
 end)
 
-test("removed graphics and paging pages cannot construct controls or secure state", function()
+test("removed graphics page cannot construct controls and repaired paging stays off", function()
     UI.withAddon(function(M, state)
-        eq(M.ModifierPaging, nil)
+        eq(MurgleDB.interface.holdActionPages, false)
+        eq(M.ModifierPaging.IsActive(), false)
         eq(M.NativeOptions.Read("HDROutput"), nil)
         eq(M.NativeOptions.Read("groundEffectDensity"), nil)
         M.Settings.Show()
         local count = #state.frames
         M.Settings.SelectCategory("Graphics")
-        M.Settings.SelectCategory("ActionPaging")
         eq(#state.frames, count)
+        M.Settings.SelectCategory("ActionPaging")
+        assert(#state.frames > count)
         M.Settings.SelectCategory("Items")
         M.Settings.SelectCategory("Interface")
         for _, f in ipairs(state.frames) do

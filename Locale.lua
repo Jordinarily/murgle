@@ -1,6 +1,17 @@
 local _, Murgle = ...
 
 local EN = {
+    CATEGORY_ACTION_PAGING = "Action paging",
+    MODIFIER_PAGING = "Hold modifiers to change action page",
+    MODIFIER_PAGING_HELP = "Enabling starts Blizzard's main bar on page 1. Hold Shift for page 2 or Ctrl for page 3 by default; release returns to page 1. Ctrl wins over Shift, then Alt. Selected modifiers temporarily route the main bar's unmodified keys to its actions; saved bindings are never rewritten. Selecting native pages 2-6 suspends this feature; select page 1 to resume. Forms that select a bonus bar, vehicle and override bars stay native. Setup and disabling wait until combat ends. The page number follows the actions actually displayed.",
+    PAGING_SHIFT = "Shift",
+    PAGING_CTRL = "Ctrl",
+    PAGING_ALT = "Alt",
+    PAGING_OFF = "Off",
+    PAGING_UNAVAILABLE = "Unavailable: native main-bar buttons, page display or secure APIs are missing or owned by another addon.",
+    PAGING_INACTIVE = "Not active. Changes wait until combat ends; all modifiers Off also leaves native paging active.",
+    PAGING_NATIVE_RETURN = "Hold a selected modifier for its page; release returns to page 1. Native pages 2-6 suspend modifier paging.",
+
     CATEGORY_ITEMS = "Items",
     NATIVE_UNAVAILABLE = "Unavailable",
     SHOW_QUEST_LEVELS = "Show native quest levels",

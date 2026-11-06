@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2 — 2026-11-06
+
+- Restored default-off modifier paging with page 1 as its starting page and synchronized displayed page numbers. Hold Shift for page 2 by default; releasing returns to page 1.
+- Manual page selection suspends modifier paging until page 1 is selected again. Native bonus/vehicle bars retain their behavior; forms without a bonus bar can use modifier paging.
+
 ## 1.3.1 — 2026-11-06
 
 - Removed the broken graphics settings page and modifier action-bar paging. These features remain unavailable pending fixes.

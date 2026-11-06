@@ -721,7 +721,56 @@ local function itemsPage()
     return page
 end
 
+local function actionPagingPage()
+    local page = newPage(L.CATEGORY_ACTION_PAGING)
+    local enabled = checkbox(page, L.MODIFIER_PAGING, "holdActionPages", 1, Murgle.ModifierPaging.ApplyAll)
+    helpButton(page, L.MODIFIER_PAGING_HELP, enabled.caption)
+    local choices = {}
+    for row, option in ipairs({
+        { "holdShiftPage", L.PAGING_SHIFT },
+        { "holdCtrlPage", L.PAGING_CTRL },
+        { "holdAltPage", L.PAGING_ALT },
+    }) do
+        local key = option[1]
+        local heading = label(page, option[2])
+        heading:SetPoint("TOPLEFT", 0, -88 - (row - 1) * 62)
+        choices[key] = {}
+        for value = 0, 6 do
+            local chosen = value
+            local control, caption = button(page, value == 0 and L.PAGING_OFF or tostring(value), 45, function()
+                MurgleDB.interface[key] = chosen
+                Murgle.ModifierPaging.ApplyAll()
+                page:Refresh()
+            end)
+            control:SetPoint("TOPLEFT", value * 51, -110 - (row - 1) * 62)
+            choices[key][value] = caption
+        end
+    end
+    local note = label(page, "", 11)
+    note:SetSize(410, 65)
+    note:SetPoint("TOPLEFT", 0, -283)
+    function page:Refresh()
+        enabled:SetChecked(MurgleDB.interface.modifierPaging == true)
+        local available = Murgle.ModifierPaging.Available()
+        enabled:EnableMouse(available == true or MurgleDB.interface.modifierPaging == true)
+        if not available then
+            note:SetText(L.PAGING_UNAVAILABLE)
+        elseif MurgleDB.interface.holdActionPages == true and not Murgle.ModifierPaging.IsActive() then
+            note:SetText(L.PAGING_INACTIVE)
+        else
+            note:SetText(L.PAGING_NATIVE_RETURN)
+        end
+        for key, captions in pairs(choices) do
+            for value, caption in pairs(captions) do
+                setSelected(caption, MurgleDB.interface[key] == value)
+            end
+        end
+    end
+    return page
+end
+
 local pageFactories = {
+    ActionPaging = actionPagingPage,
     Items = itemsPage,
     Convenience = conveniencePage,
     Frames = framesPage,
@@ -900,6 +949,7 @@ local function createWindow()
     addNavigation("Frames", L.CATEGORY_FRAMES, 9)
     addNavigation("Convenience", L.CATEGORY_CONVENIENCE, 10)
     addNavigation("Items", L.CATEGORY_ITEMS, 11)
+    addNavigation("ActionPaging", L.CATEGORY_ACTION_PAGING, 12)
     UISpecialFrames[#UISpecialFrames + 1] = "MurgleSettingsFrame"
     Settings.SelectCategory(selected)
 end

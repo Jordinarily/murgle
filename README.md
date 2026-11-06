@@ -95,6 +95,22 @@ acceptance of disenchant destruction warnings are not included.
 
 ---
 
+### Hold-to-page action bars
+
+**Action paging** starts off. Enable it to start the main bar on page 1:
+hold **Shift for page 2**, then release for page 1. Ctrl defaults to page 3;
+Alt starts off. Each modifier can use pages 1–6 or remain off. Ctrl takes priority
+over Shift, then Alt. The displayed page number follows the actions shown.
+
+Selected modifiers temporarily route the main bar's existing unmodified keys
+to those actions; saved bindings remain unchanged. Selecting native pages 2–6
+suspends modifier paging; select page 1 to resume. Forms without a native bonus
+bar can use paging. Actual bonus, vehicle, override and other special bars remain
+native. Setup and disabling wait until combat ends. Old paging settings do not
+automatically enable this repaired version.
+
+* * *
+
 ### More native options
 
 - **Quests:** Show native quest levels uses WoW's existing quest-list and text setting.
