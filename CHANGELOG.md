@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 — 2026-11-06
+
+- Replaced bag-hover and Edit Mode hooks with removable native callbacks, preserving combat safeguards and native opacity restoration.
+
 ## 1.1.0 — 2026-11-05
 
 - Added an opt-in Convenience page for native bag disenchanting, class Train All, bulk buying and cost-reviewed restock targets.
