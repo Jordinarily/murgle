@@ -1,5 +1,28 @@
 local function setup(enabled)
-    local frames, hooks = {}, {}
+    local frames, hooks = {}, { registrations = 0, removals = 0, nativeHooks = 0 }
+    local callbacks = {}
+    EventRegistry = {
+        RegisterCallback = function(_, event, callback, owner)
+            eq(event, "ContainerFrameItemButton.EnterButton")
+            assert(not callbacks[owner], "duplicate native enter callback")
+            callbacks[owner] = callback
+            hooks.registrations = hooks.registrations + 1
+        end,
+        UnregisterCallback = function(_, event, owner)
+            eq(event, "ContainerFrameItemButton.EnterButton")
+            callbacks[owner] = nil
+            hooks.removals = hooks.removals + 1
+        end,
+        TriggerEvent = function(_, event, button)
+            eq(event, "ContainerFrameItemButton.EnterButton")
+            for owner, callback in pairs(callbacks) do
+                callback(owner, button)
+            end
+        end,
+    }
+    hooks.OnEnter = function(button)
+        EventRegistry:TriggerEvent("ContainerFrameItemButton.EnterButton", button)
+    end
     local combat, alt, quality, link, guid = false, true, 2, "item:100", "Item-100-A"
     local addon = {}
     MurgleDB = { lootVendors = { disenchantClick = enabled } }
@@ -47,7 +70,7 @@ local function setup(enabled)
     NUM_BAG_FRAMES = 4
     ContainerFrameItemButton_OnEnter = function() end
     hooksecurefunc = function(key, fn)
-        hooks.OnEnter = fn
+        hooks.nativeHooks = hooks.nativeHooks + 1
     end
     RegisterAttributeDriver = function(f, key, value)
         f.driver = value
@@ -122,7 +145,8 @@ end
 test("item actions disabled startup creates no hooks or frames", function()
     local _, frames, hooks = setup(false)
     eq(#frames, 0)
-    eq(next(hooks), nil)
+    eq(hooks.registrations, 0)
+    eq(hooks.nativeHooks, 0)
 end)
 
 test("item actions arm only green carried gear and recheck identity before input", function()
@@ -248,5 +272,58 @@ test("item actions first enabled in combat installs through core deferral after 
     combat(false)
     pending()
     eq(#frames, 2)
-    eq(type(hooks.OnEnter), "function")
+    eq(hooks.registrations, 1)
+    eq(hooks.nativeHooks, 0)
+end)
+
+test("item actions native callback subscription follows enable state without native hooks", function()
+    local addon, frames, registry, button = setup(true)
+    eq(registry.registrations, 1)
+    eq(registry.nativeHooks, 0)
+    addon.ItemActions.ApplyAll()
+    addon.ItemActions.ApplyAll()
+    eq(registry.registrations, 1)
+    registry.OnEnter(button)
+    eq(frames[1].shown, true)
+    MurgleDB.lootVendors.disenchantClick = false
+    addon.ItemActions.ApplyAll()
+    eq(registry.removals, 1)
+    registry.OnEnter(button)
+    eq(frames[1].shown, false)
+    MurgleDB.lootVendors.disenchantClick = true
+    addon.ItemActions.ApplyAll()
+    eq(registry.registrations, 2)
+    registry.OnEnter(button)
+    eq(frames[1].shown, true)
+    eq(registry.nativeHooks, 0)
+end)
+
+test("item actions combat disable unregisters native callback before deferred overlay cleanup", function()
+    local addon, frames, registry, button, state = setup(true)
+    local pending
+    addon.DeferUntilOutOfCombat = function(_, fn)
+        pending = fn
+    end
+    registry.OnEnter(button)
+    state(true, true)
+    MurgleDB.lootVendors.disenchantClick = false
+    addon.ItemActions.ApplyAll()
+    eq(registry.removals, 1)
+    eq(type(pending), "function")
+    state(false, true)
+    pending()
+    registry.OnEnter(button)
+    eq(frames[1].shown, false)
+    eq(frames[1].attrs["alt-type1"], nil)
+    eq(registry.registrations, 1)
+end)
+
+test("item actions missing native registry fails closed without hook fallback", function()
+    local addon, frames, registry = setup(false)
+    EventRegistry = nil
+    MurgleDB.lootVendors.disenchantClick = true
+    addon.ItemActions.ApplyAll()
+    eq(#frames, 0)
+    eq(registry.nativeHooks, 0)
+    eq(registry.registrations, 0)
 end)

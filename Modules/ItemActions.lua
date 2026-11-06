@@ -4,6 +4,8 @@ Murgle.ItemActions = ItemActions
 
 local overlay, events, hovered, targetLink, targetBag, targetSlot, targetGUID
 local installed = false
+local enterRegistry
+local ENTER_EVENT = "ContainerFrameItemButton.EnterButton"
 
 local function enabled()
     return MurgleDB and MurgleDB.lootVendors and MurgleDB.lootVendors.disenchantClick == true
@@ -11,8 +13,9 @@ end
 
 local function available()
     return type(CreateFrame) == "function"
-        and type(hooksecurefunc) == "function"
-        and type(ContainerFrameItemButton_OnEnter) == "function"
+        and EventRegistry
+        and type(EventRegistry.RegisterCallback) == "function"
+        and type(EventRegistry.UnregisterCallback) == "function"
         and type(RegisterAttributeDriver) == "function"
         and type(InCombatLockdown) == "function"
         and type(IsAltKeyDown) == "function"
@@ -119,7 +122,19 @@ function ItemActions.IsLockpickAvailable()
     return false
 end
 
+local function unregisterEnter()
+    if enterRegistry then
+        enterRegistry:UnregisterCallback(ENTER_EVENT, ItemActions)
+        enterRegistry = nil
+    end
+end
+
 function ItemActions.ApplyAll()
+    -- Registry subscriptions are not protected. Remove them immediately even
+    -- when secure overlay cleanup itself must wait until combat ends.
+    if not enabled() or not available() then
+        unregisterEnter()
+    end
     if type(InCombatLockdown) ~= "function" then
         return
     end
@@ -202,8 +217,16 @@ function ItemActions.ApplyAll()
                 clear()
             end
         end)
-        hooksecurefunc("ContainerFrameItemButton_OnEnter", enter)
         installed = true
+    end
+    if enterRegistry ~= EventRegistry then
+        unregisterEnter()
+        -- The native mixin emits this after populating hover state. Registry
+        -- callbacks receive their owner context first, then the native button.
+        EventRegistry:RegisterCallback(ENTER_EVENT, function(_, button)
+            enter(button)
+        end, ItemActions)
+        enterRegistry = EventRegistry
     end
     for _, event in ipairs({ "BAG_UPDATE", "BAG_UPDATE_DELAYED", "PLAYER_REGEN_ENABLED", "MODIFIER_STATE_CHANGED" }) do
         events:RegisterEvent(event)

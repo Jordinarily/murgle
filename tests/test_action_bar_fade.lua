@@ -1,7 +1,24 @@
 local H = dofile("tests/helpers.lua")
 
 local function withBars(fn)
-    local state = { combat = false, frames = {}, hooks = 0 }
+    local state = { combat = false, frames = {}, hooks = 0, callbacks = {}, registrations = 0 }
+    local registry = {}
+    function registry:RegisterCallback(event, callback, owner)
+        state.registrations = state.registrations + 1
+        state.callbacks[event] = { callback = callback, owner = owner }
+    end
+    function registry:UnregisterCallback(event, owner)
+        local saved = state.callbacks[event]
+        if saved and saved.owner == owner then
+            state.callbacks[event] = nil
+        end
+    end
+    function registry:TriggerEvent(event)
+        local saved = state.callbacks[event]
+        if saved then
+            saved.callback(saved.owner)
+        end
+    end
     local bar = { alpha = 0.8 }
     function bar:GetAlpha()
         return self.alpha
@@ -17,9 +34,11 @@ local function withBars(fn)
     end
     function manager:EnterEditMode()
         self.editing = true
+        registry:TriggerEvent("EditMode.Enter")
     end
     function manager:ExitEditMode()
         self.editing = false
+        registry:TriggerEvent("EditMode.Exit")
     end
     function state:fire(event, ...)
         for _, frame in ipairs(self.frames) do
@@ -39,6 +58,7 @@ local function withBars(fn)
         MultiBar6 = false,
         MultiBar7 = false,
         EditModeManagerFrame = manager,
+        EventRegistry = registry,
         InCombatLockdown = function()
             return state.combat
         end,
@@ -233,5 +253,50 @@ test("late action bars and Edit Mode load independently and stop discovery when 
         for _, name in ipairs(names) do
             eq(_G[name].alpha, 0.6)
         end
+    end)
+end)
+
+test("action bar Edit Mode callbacks are removable and do not hook manager methods", function()
+    withBars(function(I, state, bar, manager)
+        local enter, exit = manager.EnterEditMode, manager.ExitEditMode
+        I.ApplyActionBarFade()
+        eq(state.registrations, 0)
+        MurgleDB.interface.fadeActionBars = true
+        state.combat = true
+        I.ApplyActionBarFade()
+        eq(state.registrations, 2)
+        eq(manager.EnterEditMode, enter)
+        eq(manager.ExitEditMode, exit)
+        I.ApplyActionBarFade()
+        eq(state.registrations, 2, "reapply must not register duplicate callbacks")
+        manager:EnterEditMode()
+        eq(bar.alpha, 0.8, "callback sees current native edit state")
+        manager:ExitEditMode()
+        eq(bar.alpha, 0.2)
+        MurgleDB.interface.fadeActionBars = false
+        I.ApplyActionBarFade()
+        eq(next(state.callbacks), nil)
+        MurgleDB.interface.fadeActionBars = true
+        I.ApplyActionBarFade()
+        eq(state.registrations, 4)
+        manager:EnterEditMode()
+        eq(bar.alpha, 0.8)
+    end)
+end)
+
+test("missing Edit Mode callback API leaves combat fading functional without manager hooks", function()
+    withBars(function(I, state, bar, manager)
+        EventRegistry = false
+        local enter, exit = manager.EnterEditMode, manager.ExitEditMode
+        MurgleDB.interface.fadeActionBars = true
+        state.combat = true
+        I.ApplyActionBarFade()
+        eq(bar.alpha, 0.2)
+        eq(manager.EnterEditMode, enter)
+        eq(manager.ExitEditMode, exit)
+        eq(state.registrations, 0)
+        state.combat = false
+        state:fire("PLAYER_REGEN_ENABLED")
+        eq(bar.alpha, 0.8)
     end)
 end)

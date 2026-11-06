@@ -960,7 +960,7 @@ local actionBarNames = {
     "MultiBar7",
 }
 local actionBarStates = {}
-local actionBarEvents, actionBarEditManager
+local actionBarEvents, actionBarEditManager, actionBarEditRegistry
 local actionBarFactor = 1
 
 local function readableAlpha(value)
@@ -1010,21 +1010,25 @@ function Interface.ApplyActionBarFade()
                 missing = true
             end
         end
+        local registry = EventRegistry
         if
-            manager ~= actionBarEditManager
-            and manager
-            and type(manager.EnterEditMode) == "function"
-            and type(manager.ExitEditMode) == "function"
+            registry
+            and type(registry.RegisterCallback) == "function"
+            and type(registry.UnregisterCallback) == "function"
+            and not actionBarEditRegistry
         then
+            -- Native notifications run after the edit-state and layout changes.
+            -- Registry callbacks receive their owner first; no event data is needed.
             local function refresh()
                 if MurgleDB.interface.fadeActionBars == true then
                     Interface.ApplyActionBarFade()
                 end
             end
-            hooksecurefunc(manager, "EnterEditMode", refresh)
-            hooksecurefunc(manager, "ExitEditMode", refresh)
-            actionBarEditManager = manager
+            registry:RegisterCallback("EditMode.Enter", refresh, Interface)
+            registry:RegisterCallback("EditMode.Exit", refresh, Interface)
+            actionBarEditRegistry = registry
         end
+        actionBarEditManager = manager
         if not actionBarEvents then
             actionBarEvents = CreateFrame("Frame")
             actionBarEvents:SetScript("OnEvent", function(_, event, addon)
@@ -1046,6 +1050,12 @@ function Interface.ApplyActionBarFade()
         actionBarEvents:UnregisterEvent("PLAYER_REGEN_ENABLED")
         actionBarEvents:UnregisterEvent("PLAYER_ENTERING_WORLD")
         actionBarEvents:UnregisterEvent("ADDON_LOADED")
+    end
+
+    if not enabled and actionBarEditRegistry then
+        actionBarEditRegistry:UnregisterCallback("EditMode.Enter", Interface)
+        actionBarEditRegistry:UnregisterCallback("EditMode.Exit", Interface)
+        actionBarEditRegistry = nil
     end
 
     for frame, state in pairs(actionBarStates) do
