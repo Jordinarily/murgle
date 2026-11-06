@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.3 — 2026-11-06
+
+- Fixed the action-paging checkbox reading an obsolete saved setting, preventing reliable enable and disable behavior.
+
 ## 1.3.2 — 2026-11-06
 
 - Restored default-off modifier paging with page 1 as its starting page and synchronized displayed page numbers. Hold Shift for page 2 by default; releasing returns to page 1.
