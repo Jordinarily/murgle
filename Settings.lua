@@ -750,9 +750,9 @@ local function actionPagingPage()
     note:SetSize(410, 65)
     note:SetPoint("TOPLEFT", 0, -283)
     function page:Refresh()
-        enabled:SetChecked(MurgleDB.interface.modifierPaging == true)
+        enabled:SetChecked(MurgleDB.interface.holdActionPages == true)
         local available = Murgle.ModifierPaging.Available()
-        enabled:EnableMouse(available == true or MurgleDB.interface.modifierPaging == true)
+        enabled:EnableMouse(available == true or MurgleDB.interface.holdActionPages == true)
         if not available then
             note:SetText(L.PAGING_UNAVAILABLE)
         elseif MurgleDB.interface.holdActionPages == true and not Murgle.ModifierPaging.IsActive() then

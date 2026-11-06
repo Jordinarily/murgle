@@ -638,3 +638,67 @@ test("removed graphics page cannot construct controls and repaired paging stays 
         end
     end)
 end)
+
+test("paging checkbox reads and writes the same setting despite old saved paging flags", function()
+    UI.withAddon(function(M, state)
+        local applied = {}
+        M.ModifierPaging.Available = function()
+            return true
+        end
+        M.ModifierPaging.ApplyAll = function()
+            applied[#applied + 1] = MurgleDB.interface.holdActionPages
+        end
+        MurgleDB.interface.modifierPaging = true
+        MurgleDB.interface.holdActionPages = false
+        M.Settings.Show()
+        M.Settings.SelectCategory("ActionPaging")
+        local toggle
+        for _, f in ipairs(state.frames) do
+            if f.kind == "CheckButton" and f.caption and f.caption.text == M.L.MODIFIER_PAGING then
+                toggle = f
+            end
+        end
+        assert(toggle)
+        eq(toggle:GetChecked(), false, "old saved flag must not determine the checkbox")
+        toggle:SetChecked(true)
+        toggle.scripts.OnClick(toggle)
+        eq(MurgleDB.interface.holdActionPages, true)
+        eq(toggle:GetChecked(), true)
+        eq(applied[1], true)
+        M.Settings.SelectCategory("Items")
+        M.Settings.SelectCategory("ActionPaging")
+        eq(toggle:GetChecked(), true)
+        toggle:SetChecked(false)
+        toggle.scripts.OnClick(toggle)
+        eq(MurgleDB.interface.holdActionPages, false)
+        eq(toggle:GetChecked(), false)
+        eq(applied[2], false)
+        eq(MurgleDB.interface.modifierPaging, true, "legacy flag must remain irrelevant")
+    end)
+end)
+
+test("enabled paging can always be switched off if native availability changes", function()
+    UI.withAddon(function(M, state)
+        M.ModifierPaging.Available = function()
+            return false
+        end
+        M.ModifierPaging.ApplyAll = function() end
+        MurgleDB.interface.modifierPaging = nil
+        MurgleDB.interface.holdActionPages = true
+        M.Settings.Show()
+        M.Settings.SelectCategory("ActionPaging")
+        local toggle
+        for _, f in ipairs(state.frames) do
+            if f.kind == "CheckButton" and f.caption and f.caption.text == M.L.MODIFIER_PAGING then
+                toggle = f
+            end
+        end
+        assert(toggle)
+        eq(toggle:GetChecked(), true)
+        eq(toggle.mouse, true, "enable state must permit cleanup even if native frames became unavailable")
+        toggle:SetChecked(false)
+        toggle.scripts.OnClick(toggle)
+        eq(MurgleDB.interface.holdActionPages, false)
+        eq(toggle:GetChecked(), false)
+    end)
+end)
