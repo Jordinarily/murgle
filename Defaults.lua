@@ -47,6 +47,9 @@ Murgle.DEFAULTS = {
         worldRefreshMode = "hideOnly",
     },
     lootVendors = {
+        ammoCount = false,
+        markedJunk = false,
+        markedItems = {},
         disenchantClick = false,
         bulkBuy = false,
         restock = false,
@@ -73,6 +76,7 @@ Murgle.DEFAULTS = {
         friendlyNamesOnly = false,
     },
     tooltip = {
+        itemDetails = false,
         cursorAnchor = false,
         anchor = "right",
         hideInCombat = false,

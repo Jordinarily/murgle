@@ -95,6 +95,19 @@ acceptance of disenchant destruction warnings are not included.
 
 ---
 
+### More native options
+
+- **Quests:** Show native quest levels uses WoW's existing quest-list and text setting.
+- **Items:** Optional equipped-ammunition totals above the backpack button, plus item IDs and per-item vendor values in the main Blizzard tooltip.
+- **Items:** Enable manual vendor marks, pick up an eligible item, then click **Mark cursor item**. Marks apply to that item type. Return it to your bag, open a merchant, then use **Sell marked** on the Items page to review and confirm up to 12 stacks. Equipment, bags, quest items, bound/refundable items and qualities above uncommon are excluded. Hold Shift to bypass selling. Clearing marks and Reset Murgle remove the saved marks; normal grey-junk automation stays separate.
+- **Graphics:** Explicit HDR output, render format, brightness and tone-mapping controls, plus ground-effect density/distance, sharpening, glow and death desaturation. No graphics values change just by installing Murgle or opening this page. Apply writes one value and shows the client's read-back; Default resets only that value using the client default. Reset Murgle leaves these native preferences and the quest-level setting alone.
+
+Item feature toggles start off. Missing or restricted native settings remain unavailable.
+HDR requires a supported display and rendering path. Higher foliage density can cost
+performance; these controls make no automatic performance adjustments.
+
+* * *
+
 ### A cleaner minimap
 
 Keep Blizzard's minimap, but strip away unwanted artwork and buttons.

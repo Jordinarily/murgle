@@ -2,7 +2,7 @@
 ## Interface: 16001
 ## Notes: Lightweight quality-of-life improvements for WoW Forever.
 ## Author: Jord
-## Version: 1.1.1
+## Version: 1.2.0
 ## X-Curse-Project-ID: 1742825
 ## X-Wago-ID: rNkgM4Na
 ## SavedVariables: MurgleDB
@@ -28,4 +28,8 @@ Modules/Chat.lua
 Modules/Tooltip.lua
 Modules/Errors.lua
 Modules/Sound.lua
+Modules/NativeOptions.lua
+Modules/ItemDetails.lua
+Modules/Ammo.lua
+Modules/MarkedJunk.lua
 Settings.lua

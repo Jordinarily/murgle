@@ -677,7 +677,154 @@ local function conveniencePage()
     return page
 end
 
+local function graphicsPage()
+    local page = newPage(L.CATEGORY_GRAPHICS)
+    local groupIndex, rows = 1, {}
+    local status = label(page, "", 11)
+    status:SetPoint("TOPLEFT", 0, -310)
+    status:SetSize(415, 28)
+    helpButton(page, L.NATIVE_OPTIONS_HELP, status)
+    local function accepted(value)
+        status:SetText(value and string.format(L.NATIVE_CHANGED, value) or L.NATIVE_REJECTED)
+    end
+    for index, group in ipairs(Murgle.NativeOptions.Groups) do
+        local i = index
+        local select = button(page, L[group[1]], 132, function()
+            groupIndex = i
+            page:Refresh()
+        end)
+        select:SetPoint("TOPLEFT", (index - 1) * 140, -36)
+    end
+    for index = 1, 5 do
+        local row = {}
+        row.caption = label(page, "", 11)
+        row.caption:SetPoint("TOPLEFT", 0, -82 - (index - 1) * 43)
+        local edit = CreateFrame("EditBox", nil, page)
+        edit:SetSize(62, 25)
+        edit:SetPoint("TOPLEFT", 186, -76 - (index - 1) * 43)
+        edit:SetAutoFocus(false)
+        edit:SetMaxLetters(12)
+        edit:SetFont(STANDARD_TEXT_FONT, 12)
+        edit:SetJustifyH("CENTER")
+        local bg = edit:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints(edit)
+        bg:SetColorTexture(unpack(COLORS.border))
+        edit:SetScript("OnEscapePressed", function(self)
+            self:ClearFocus()
+            page:Refresh()
+        end)
+        row.edit = edit
+        row.apply = button(page, L.NATIVE_APPLY, 62, function()
+            edit:ClearFocus()
+            accepted(Murgle.NativeOptions.Set(row.name, edit:GetText()))
+            page:Refresh()
+        end)
+        row.apply:SetPoint("LEFT", edit, "RIGHT", 5, 0)
+        row.default = button(page, L.NATIVE_DEFAULT, 78, function()
+            edit:ClearFocus()
+            accepted(Murgle.NativeOptions.Reset(row.name))
+            page:Refresh()
+        end)
+        row.default:SetPoint("LEFT", row.apply, "RIGHT", 5, 0)
+        rows[index] = row
+    end
+    function page:Refresh()
+        if selected == "Graphics" and window and window:IsShown() then
+            self:RegisterEvent("CVAR_UPDATE")
+        else
+            self:UnregisterEvent("CVAR_UPDATE")
+        end
+        local group = Murgle.NativeOptions.Groups[groupIndex]
+        for index, row in ipairs(rows) do
+            local entry = group[index + 1]
+            local name = entry and entry[1]
+            if row.name ~= name then
+                row.edit:ClearFocus()
+            end
+            row.name = name
+            local value, writable
+            if row.name then
+                value, writable = Murgle.NativeOptions.Read(row.name)
+            end
+            row.caption:SetText(
+                row.name and (L["NATIVE_" .. row.name] .. (value and "" or " - " .. L.NATIVE_UNAVAILABLE)) or ""
+            )
+            if value then
+                if not row.edit:HasFocus() then
+                    row.edit:SetText(value)
+                end
+                row.edit:Show()
+            else
+                row.edit:Hide()
+            end
+            if value and writable then
+                row.apply:Show()
+                row.default:Show()
+            else
+                row.apply:Hide()
+                row.default:Hide()
+            end
+        end
+    end
+    page:SetScript("OnShow", function()
+        page:Refresh()
+    end)
+    page:SetScript("OnHide", function()
+        page:UnregisterEvent("CVAR_UPDATE")
+    end)
+    page:SetScript("OnEvent", function()
+        page:Refresh()
+    end)
+    return page
+end
+
+local function itemsPage()
+    local page = newPage(L.CATEGORY_ITEMS)
+    local ammo = checkbox(page, L.AMMO_COUNT, "ammoCount", 1, Murgle.Ammo.ApplyAll, "lootVendors")
+    local details = checkbox(page, L.ITEM_DETAILS, "itemDetails", 2, Murgle.ItemDetails.ApplyAll, "tooltip")
+    local junk = checkbox(page, L.MARKED_JUNK, "markedJunk", 3, Murgle.MarkedJunk.ApplyAll, "lootVendors")
+    helpButton(page, L.AMMO_COUNT_HELP, ammo.caption)
+    helpButton(page, L.ITEM_DETAILS_HELP, details.caption)
+    helpButton(page, L.MARKED_JUNK_HELP, junk.caption)
+    local status = label(page, "", 11)
+    status:SetPoint("TOPLEFT", 0, -240)
+    status:SetSize(410, 60)
+    local count = label(page, "", 12)
+    count:SetPoint("TOPLEFT", 0, -154)
+    local mark = button(page, L.MARK_CURSOR_ITEM, 170, function()
+        status:SetText(Murgle.MarkedJunk.MarkCursor() and L.MARK_RESULT or L.MARK_REJECTED)
+        page:Refresh()
+    end)
+    mark:SetPoint("TOPLEFT", 0, -190)
+    local clear = button(page, L.CLEAR_MARKED_ITEMS, 170, function()
+        Murgle.MarkedJunk.ClearMarks()
+        page:Refresh()
+    end)
+    clear:SetPoint("TOPLEFT", 180, -190)
+    local sell = button(page, L.SELL_MARKED, 170, Murgle.MarkedJunk.RequestSell)
+    sell:SetPoint("TOPLEFT", 0, -220)
+    status:SetPoint("TOPLEFT", 0, -265)
+    function page:Refresh()
+        ammo:SetChecked(MurgleDB.lootVendors.ammoCount == true)
+        details:SetChecked(MurgleDB.tooltip.itemDetails == true)
+        junk:SetChecked(MurgleDB.lootVendors.markedJunk == true)
+        count:SetText(string.format(L.MARKED_COUNT, Murgle.MarkedJunk.CountMarks()))
+        if MurgleDB.lootVendors.markedJunk == true then
+            mark:Show()
+            clear:Show()
+            sell:Show()
+        else
+            mark:Hide()
+            clear:Hide()
+            sell:Hide()
+        end
+    end
+    return page
+end
+
 local pageFactories = {
+    Graphics = graphicsPage,
+    Items = itemsPage,
     Convenience = conveniencePage,
     Frames = framesPage,
     Interface = function()
@@ -704,7 +851,20 @@ local pageFactories = {
             return Murgle.Quests.ReputationAvailable() and L.AUTO_WATCH_REPUTATION_HELP
                 or L.AUTO_WATCH_REPUTATION_UNAVAILABLE
         end, reputation.caption)
+        local levels, levelCaption = button(page, L.SHOW_QUEST_LEVELS, 245, function()
+            local value = Murgle.NativeOptions.Read("showQuestLevel")
+            if value then
+                Murgle.NativeOptions.Set("showQuestLevel", value == "1" and "0" or "1")
+            end
+            page:Refresh()
+        end)
+        levels:SetPoint("TOPLEFT", 0, -112)
+        helpButton(page, L.SHOW_QUEST_LEVELS_HELP, levelCaption)
         function page:Refresh()
+            local levelValue, writable = Murgle.NativeOptions.Read("showQuestLevel")
+            levels:EnableMouse(writable == true)
+            levelCaption:SetText(L.SHOW_QUEST_LEVELS .. (levelValue and "" or " - " .. L.NATIVE_UNAVAILABLE))
+            setSelected(levelCaption, levelValue == "1")
             reputation:SetChecked(MurgleDB.quests.autoWatchReputation == true)
             local reputationAvailable = Murgle.Quests.ReputationAvailable()
             reputation:EnableMouse(reputationAvailable == true)
@@ -841,6 +1001,8 @@ local function createWindow()
     addNavigation("Quests", L.CATEGORY_QUESTS, 8)
     addNavigation("Frames", L.CATEGORY_FRAMES, 9)
     addNavigation("Convenience", L.CATEGORY_CONVENIENCE, 10)
+    addNavigation("Graphics", L.CATEGORY_GRAPHICS, 11)
+    addNavigation("Items", L.CATEGORY_ITEMS, 12)
     UISpecialFrames[#UISpecialFrames + 1] = "MurgleSettingsFrame"
     Settings.SelectCategory(selected)
 end

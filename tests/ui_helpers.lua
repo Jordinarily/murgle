@@ -85,6 +85,33 @@ function UI.withAddon(fn, beforeInitialize)
             self.regions[#self.regions + 1] = label
             return label
         end
+        function frame:SetAutoFocus(value)
+            self.autoFocus = value
+        end
+        function frame:SetMaxLetters(value)
+            self.maxLetters = value
+        end
+        function frame:SetFont(...)
+            self.font = { ... }
+        end
+        function frame:SetText(value)
+            self.text = value
+        end
+        function frame:GetText()
+            return self.text
+        end
+        function frame:ClearFocus()
+            self.focused = false
+        end
+        function frame:HasFocus()
+            return self.focused == true
+        end
+        function frame:SetJustifyH(value)
+            self.justify = value
+        end
+        function frame:SetTextInsets(...)
+            self.insets = { ... }
+        end
         function frame:SetOrientation(value)
             self.orientation = value
         end

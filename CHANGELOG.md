@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0 — 2026-11-06
+
+- Added explicit HDR and world-effect controls using native graphics preferences, including ground-effect density and distance.
+- Added access to native quest-level labels, equipped-ammunition counts and item ID/vendor-value tooltip details.
+- Added manual marking of eligible non-equipment vendor items and reviewed sales at an open merchant; existing automatic grey-junk sales are unchanged.
+
 ## 1.1.1 — 2026-11-06
 
 - Replaced bag-hover and Edit Mode hooks with removable native callbacks, preserving combat safeguards and native opacity restoration.

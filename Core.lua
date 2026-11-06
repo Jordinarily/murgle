@@ -118,6 +118,15 @@ function Murgle.ApplyAllSettings()
     if Murgle.Errors then
         Murgle.Errors.ApplyAll()
     end
+    if Murgle.ItemDetails then
+        Murgle.ItemDetails.ApplyAll()
+    end
+    if Murgle.Ammo then
+        Murgle.Ammo.ApplyAll()
+    end
+    if Murgle.MarkedJunk then
+        Murgle.MarkedJunk.ApplyAll()
+    end
     if Murgle.Sound then
         Murgle.Sound.ApplyAll()
     end
@@ -229,6 +238,15 @@ function Murgle.Initialize()
     end
     if Murgle.Errors then
         Murgle.Errors.Initialize()
+    end
+    if Murgle.ItemDetails then
+        Murgle.ItemDetails.Initialize()
+    end
+    if Murgle.Ammo then
+        Murgle.Ammo.Initialize()
+    end
+    if Murgle.MarkedJunk then
+        Murgle.MarkedJunk.Initialize()
     end
     if Murgle.Sound then
         Murgle.Sound.Initialize()
