@@ -39,6 +39,7 @@ Murgle.DEFAULTS = {
     },
     quests = { sparkles = false, autoWatchReputation = false, rewardValues = false },
     automation = {
+        useQuestStarters = false,
         trainAll = false,
         warnLowRank = false,
         skipServiceGossip = false,
@@ -50,6 +51,7 @@ Murgle.DEFAULTS = {
         worldRefreshMode = "hideOnly",
     },
     lootVendors = {
+        openClams = false,
         ammoCount = false,
         markedJunk = false,
         markedItems = {},

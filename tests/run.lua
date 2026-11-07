@@ -18,6 +18,7 @@ function eq(actual, expected, message)
 end
 
 local tests = {
+    "tests/test_item_opening.lua",
     "tests/test_modifier_paging.lua",
     "tests/test_marked_junk.lua",
     "tests/test_ammo.lua",

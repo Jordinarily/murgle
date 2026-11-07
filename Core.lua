@@ -130,6 +130,9 @@ function Murgle.ApplyAllSettings()
     if Murgle.MarkedJunk then
         Murgle.MarkedJunk.ApplyAll()
     end
+    if Murgle.ItemOpening then
+        Murgle.ItemOpening.ApplyAll()
+    end
     if Murgle.Sound then
         Murgle.Sound.ApplyAll()
     end
@@ -253,6 +256,9 @@ function Murgle.Initialize()
     end
     if Murgle.MarkedJunk then
         Murgle.MarkedJunk.Initialize()
+    end
+    if Murgle.ItemOpening then
+        Murgle.ItemOpening.Initialize()
     end
     if Murgle.Sound then
         Murgle.Sound.Initialize()

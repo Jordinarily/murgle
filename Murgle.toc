@@ -33,4 +33,5 @@ Modules/NativeOptions.lua
 Modules/ItemDetails.lua
 Modules/Ammo.lua
 Modules/MarkedJunk.lua
+Modules/ItemOpening.lua
 Settings.lua

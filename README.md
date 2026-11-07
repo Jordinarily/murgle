@@ -119,6 +119,11 @@ automatically enable this repaired version.
 - **Items:** Optional equipped-ammunition totals above the backpack button, plus item IDs and per-item vendor values in the main Blizzard tooltip.
 - **Items:** Enable manual vendor marks, pick up an eligible item, then click **Mark cursor item**. Marks apply to that item type. Return it to your bag, open a merchant, then use **Sell marked** on the Items page to review and confirm up to 12 stacks. Equipment, bags, quest items, bound/refundable items and qualities above uncommon are excluded. Hold Shift to bypass selling. Clearing marks and Reset Murgle remove the saved marks; normal grey-junk automation stays separate.
 
+- **Items:** Automatically open clams handles Small Barnacled, Thick-shelled, Big-mouth and Soft-shelled Clams one at a time. Requires native Auto Loot and four free general bag slots; other containers stay manual.
+- **Items:** Use new quest-starting items opens direct quest offers from newly acquired items. You accept the quest yourself. Already-carried items, ordinary quest items and items with use spells remain manual; declined offers do not repeatedly reopen.
+
+Both opening options pause during combat, casting and other item interactions. Hold Shift to pause. No polling or native preference changes.
+
 Item feature toggles start off. Missing or restricted native settings remain unavailable.
 
 * * *

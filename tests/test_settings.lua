@@ -701,3 +701,31 @@ test("enabled paging can always be switched off if native availability changes",
         eq(toggle:GetChecked(), false)
     end)
 end)
+
+test("Items page exposes independent default-off item opening controls and reset", function()
+    UI.withAddon(function(M, state)
+        M.Settings.Show()
+        M.Settings.SelectCategory("Items")
+        eq(MurgleDB.lootVendors.openClams, false)
+        eq(MurgleDB.automation.useQuestStarters, false)
+        local found = {}
+        for _, frame in ipairs(state.frames) do
+            if
+                frame.caption
+                and (frame.caption.text == M.L.OPEN_CLAMS or frame.caption.text == M.L.USE_QUEST_STARTERS)
+            then
+                found[frame.caption.text] = frame
+                eq(frame:GetChecked(), false)
+                frame:SetChecked(true)
+                frame.scripts.OnClick(frame)
+            end
+        end
+        assert(found[M.L.OPEN_CLAMS] and found[M.L.USE_QUEST_STARTERS])
+        eq(MurgleDB.lootVendors.openClams, true)
+        eq(MurgleDB.automation.useQuestStarters, true)
+        M.Settings.ConfirmReset()
+        StaticPopupDialogs.MURGLE_RESET.OnAccept()
+        eq(MurgleDB.lootVendors.openClams, false)
+        eq(MurgleDB.automation.useQuestStarters, false)
+    end)
+end)
