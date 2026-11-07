@@ -11,7 +11,23 @@ local eventNames = { "UPDATE_BINDINGS", "PLAYER_ENTERING_WORLD" }
 -- paging/binding functions from an insecure modifier event during combat.
 local stateSnippet = [[
     self:ClearBindings()
-    if self:GetAttribute("conflict") then return end
+    if self:GetAttribute("conflict") then
+        -- Retry only on a later secure state transition, after every foreign
+        -- paging attribute is gone. Never reclaim a modified or wildcard path.
+        for i = 0, 12 do
+            local frame = i == 0 and self:GetFrameRef("bar") or self:GetFrameRef("button" .. i)
+            if frame:GetAttribute("modifiers") ~= nil then return end
+            if i > 0 and frame:GetAttribute("actionpage") ~= nil then return end
+            for _, prefix in ipairs({"", "shift-", "ctrl-", "alt-", "ctrl-shift-", "alt-shift-", "alt-ctrl-", "alt-ctrl-shift-", "*"}) do
+                if prefix ~= "" and frame:GetAttribute(prefix .. "actionpage") ~= nil then return end
+                if frame:GetAttribute(prefix .. "actionpage*") ~= nil then return end
+                for suffix = 1, 31 do
+                    if frame:GetAttribute(prefix .. "actionpage" .. suffix) ~= nil then return end
+                end
+            end
+        end
+        self:SetAttribute("conflict", nil)
+    end
     local previous = tonumber(self:GetAttribute("murgle-lastpage"))
     local conflict = false
     for i = 1, 12 do
@@ -49,6 +65,7 @@ local stateSnippet = [[
                 button:SetAttribute("actionpage", nil)
             end
         end
+        self:SetAttribute("murgle-lastpage", nil)
         self:SetAttribute("conflict", true)
         self:SetAttribute("effective-page", nil)
         self:CallMethod("UpdatePageIndicator")
@@ -107,8 +124,9 @@ local function buildDriver(settings)
     end
     local native =
         "[vehicleui][overridebar][possessbar][shapeshift][petbattle][bonusbar:1][bonusbar:2][bonusbar:3][bonusbar:4][bonusbar:5] native; "
-    local manual = "[bar:2][bar:3][bar:4][bar:5][bar:6] native; "
-    return native .. manual .. table.concat(clauses, "; ") .. "; [nomod] base; native", prefixes
+    -- Match established paging precedence: special bars, held modifiers,
+    -- then the native selected page. Release on page 1 uses our base state.
+    return native .. table.concat(clauses, "; ") .. "; [bar:1,nomod] base; native", prefixes
 end
 
 local function hasPageOverrides(frame)

@@ -171,31 +171,31 @@ test("loot pickup confirmation accepts exact current native slot and hides only 
     end)
 end)
 
-test("native confirmation choices stay separate and skip combat Shift altered or protected dialogs", function()
+test("legacy enchant confirmation option never hooks or accepts armor kit replacement", function()
     withInteractions(function(I, state, _, hooks, popup)
         MurgleDB.automation.confirmEnchantReplace = true
         I.ApplyAll()
-        hooks.StaticPopup_Show("LOOT_BIND")
-        eq(state.confirmed, 0)
+        eq(hooks.StaticPopup_Show, nil)
+        eq(state.replaced, 0)
+        eq(popup.shown, true)
+    end)
+end)
+
+test("loot hook leaves native enchant replacement confirmation visible and untouched", function()
+    withInteractions(function(I, state, _, hooks, popup)
+        MurgleDB.automation.confirmLootPickup = true
+        MurgleDB.automation.confirmEnchantReplace = true
+        I.ApplyAll()
         popup.which = "REPLACE_ENCHANT"
-        state.shift = true
+        C_Item.ReplaceEnchant = function()
+            error("replacement requires the native confirmation")
+        end
         hooks.StaticPopup_Show(popup.which)
+        eq(popup.shown, true)
         eq(state.replaced, 0)
-        state.shift = false
-        state.combat = true
+        popup.which = "LOOT_BIND"
         hooks.StaticPopup_Show(popup.which)
-        eq(state.replaced, 0)
-        state.combat = false
-        popup.protected = true
-        hooks.StaticPopup_Show(popup.which)
-        eq(state.replaced, 0)
-        popup.protected = false
-        popup.dialogInfo = {}
-        hooks.StaticPopup_Show(popup.which)
-        eq(state.replaced, 0)
-        popup.dialogInfo = StaticPopupDialogs.REPLACE_ENCHANT
-        hooks.StaticPopup_Show(popup.which)
-        eq(state.replaced, 1)
+        eq(state.confirmed, 1)
     end)
 end)
 
@@ -218,15 +218,14 @@ end)
 
 test("confirm action cannot hide a popup reused synchronously by another native request", function()
     withInteractions(function(I, state, _, hooks, popup)
-        MurgleDB.automation.confirmEnchantReplace = true
+        MurgleDB.automation.confirmLootPickup = true
         I.ApplyAll()
-        popup.which = "REPLACE_ENCHANT"
-        C_Item.ReplaceEnchant = function()
-            state.replaced = state.replaced + 1
-            hooks.StaticPopup_Show("REPLACE_ENCHANT")
+        ConfirmLootSlot = function()
+            state.confirmed = state.confirmed + 1
+            hooks.StaticPopup_Show("LOOT_BIND")
         end
-        hooks.StaticPopup_Show("REPLACE_ENCHANT")
-        eq(state.replaced, 1)
+        hooks.StaticPopup_Show("LOOT_BIND")
+        eq(state.confirmed, 1)
         eq(popup.shown, true)
     end)
 end)
@@ -239,5 +238,28 @@ test("removed native popup definitions leave confirmation untouched", function()
         I.ApplyAll()
         hooks.StaticPopup_Show("LOOT_BIND")
         eq(state.confirmed, 0)
+    end)
+end)
+
+test("loot confirmation still respects Shift combat protected and altered dialogs", function()
+    withInteractions(function(I, state, _, hooks, popup)
+        MurgleDB.automation.confirmLootPickup = true
+        I.ApplyAll()
+        state.shift = true
+        hooks.StaticPopup_Show("LOOT_BIND")
+        state.shift = false
+        state.combat = true
+        hooks.StaticPopup_Show("LOOT_BIND")
+        state.combat = false
+        popup.protected = true
+        hooks.StaticPopup_Show("LOOT_BIND")
+        popup.protected = false
+        popup.dialogInfo = {}
+        hooks.StaticPopup_Show("LOOT_BIND")
+        eq(state.confirmed, 0)
+        eq(popup.shown, true)
+        popup.dialogInfo = StaticPopupDialogs.LOOT_BIND
+        hooks.StaticPopup_Show("LOOT_BIND")
+        eq(state.confirmed, 1)
     end)
 end)

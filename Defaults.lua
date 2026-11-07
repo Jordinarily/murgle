@@ -44,7 +44,6 @@ Murgle.DEFAULTS = {
         skipServiceGossip = false,
         confirmLootPickup = false,
         confirmLootRolls = false,
-        confirmEnchantReplace = false,
         autoQuest = false,
         autoTurnIn = false,
         autoWorldRefresh = true,
@@ -81,6 +80,7 @@ Murgle.DEFAULTS = {
     },
     tooltip = {
         itemDetails = false,
+        spellDetails = false,
         cursorAnchor = false,
         anchor = "right",
         hideInCombat = false,

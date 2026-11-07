@@ -229,9 +229,11 @@ test("tooltip settings persist to their category and reset cached controls", fun
                 end
             end
         end
-        eq(#checks, 2)
+        eq(#checks, 3)
         eq(MurgleDB.tooltip.cursorAnchor, true)
         eq(MurgleDB.tooltip.hideInCombat, true)
+        eq(MurgleDB.tooltip.spellDetails, true)
+        eq(MurgleDB.tooltip.itemDetails, false)
         eq(MurgleDB.tooltip.compact, nil)
         eq(MurgleDB.interface.cursorAnchor, nil)
         assert(plus)
@@ -250,6 +252,8 @@ test("tooltip settings persist to their category and reset cached controls", fun
         eq(MurgleDB.tooltip.anchor, "right")
         eq(checks[1]:GetChecked(), false)
         eq(checks[2]:GetChecked(), false)
+        eq(checks[3]:GetChecked(), false)
+        eq(MurgleDB.tooltip.spellDetails, false)
         eq(plus:IsShown(), false)
         eq(MurgleDB.tooltip.compact, nil)
     end)

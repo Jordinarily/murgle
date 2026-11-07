@@ -1,10 +1,10 @@
 # Murgle
 
-<img src="assets/branding/murgle-social-preview.png" alt="Murgle logo" width="128" height="128">
+<img src="https://raw.githubusercontent.com/Jordinarily/murgle/main/assets/branding/murgle-social-preview.png" alt="Murgle logo" width="128" height="128">
 
 Lightweight, native-first quality-of-life improvements for WoW Forever.
 
-[GitHub releases](https://github.com/Jordinarily/murgle/releases/latest) · [CurseForge](https://www.curseforge.com/wow/addons/murgle) · WowUp Hub (link coming soon)
+[GitHub releases](https://github.com/Jordinarily/murgle/releases/latest) · [CurseForge](https://www.curseforge.com/wow/addons/murgle) · [WowUp Hub](https://wowup.io/addons/2797949)
 
 Murgle is for players who like Blizzard's UI, but want it cleaner, less intrusive and a little smarter.
 
@@ -12,7 +12,7 @@ It removes unnecessary clutter, automates repetitive interactions and exposes us
 
 > Blizzard, just cleaner.
 
-![Murgle settings](assets/screenshots/01-murgle-settings.png)
+![Murgle settings](https://raw.githubusercontent.com/Jordinarily/murgle/main/assets/screenshots/01-murgle-settings.png)
 
 ---
 
@@ -40,7 +40,7 @@ Continuous background processing and replacement systems are deliberately avoide
 
 > Performance figures were measured during in-game testing and may vary depending on enabled features and client state.
 
-![Murgle in-game performance profiler](assets/screenshots/02-performance-profiler.png)
+![Murgle in-game performance profiler](https://raw.githubusercontent.com/Jordinarily/murgle/main/assets/screenshots/02-performance-profiler.png)
 
 ---
 
@@ -103,9 +103,11 @@ Alt starts off. Each modifier can use pages 1–6 or remain off. Ctrl takes prio
 over Shift, then Alt. The displayed page number follows the actions shown.
 
 Selected modifiers temporarily route the main bar's existing unmodified keys
-to those actions; saved bindings remain unchanged. Selecting native pages 2–6
-suspends modifier paging; select page 1 to resume. Forms without a native bonus
-bar can use paging. Actual bonus, vehicle, override and other special bars remain
+to those actions; saved bindings remain unchanged. Held modifiers take priority
+over native pages 2–6; releasing returns to the native selected page. If another
+addon takes ownership of paging attributes, Murgle yields and resumes on a later
+state transition only after those attributes are removed. Forms without a native
+bonus bar can use paging. Actual bonus, vehicle, override and other special bars remain
 native. Setup and disabling wait until combat ends. Old paging settings do not
 automatically enable this repaired version.
 
@@ -120,6 +122,28 @@ automatically enable this repaired version.
 Item feature toggles start off. Missing or restricted native settings remain unavailable.
 
 * * *
+
+### Native camera and dispel setup
+
+The **Native setup** page checks the unmodified mouse wheel's effective bindings.
+**Restore camera wheel zoom** explicitly assigns wheel up/down to camera zoom and
+saves the current account or character binding set. It only changes unbound,
+minimap or camera assignments outside combat; custom bindings and active overrides
+are left alone. Close Blizzard Settings before using it. If camera bindings are
+already correct, a different input handler may need investigation.
+
+**Show dispellable-by-me indicators** explicitly enables native debuff display and
+indicators for effects your character can dispel, while keeping other debuffs
+visible. It changes persistent WoW preferences; use **Party/raid settings** to
+adjust them. Murgle reset does not undo native preferences or saved wheel bindings.
+
+**Party/raid layout** opens Blizzard Edit Mode. Select Party frames and enable
+raid-style party frames there, then choose your own size/layout. **Blizzard
+click-casting settings** lets you bind a learned dispel to your preferred click.
+Murgle does not choose a spell, change your cast bindings or cast automatically.
+These shortcuts and setup actions do no background work.
+
+---
 
 ### A cleaner minimap
 
@@ -138,7 +162,7 @@ Keep Blizzard's minimap, but strip away unwanted artwork and buttons.
 
 Square mode uses the existing Blizzard minimap rather than replacing it.
 
-![Blizzard minimap before and with Murgle](assets/screenshots/04-minimap-before-after.png)
+![Blizzard minimap before and with Murgle](https://raw.githubusercontent.com/Jordinarily/murgle/main/assets/screenshots/04-minimap-before-after.png)
 
 ---
 
@@ -166,7 +190,7 @@ Murgle cleans up Blizzard's existing secure unit frames instead of replacing the
 
 Native health, power and unit-frame interactions remain intact.
 
-![Blizzard unit frames before and with Murgle; player name redacted](assets/screenshots/03-unit-frames-before-after.png)
+![Blizzard unit frames before and with Murgle; player name redacted](https://raw.githubusercontent.com/Jordinarily/murgle/main/assets/screenshots/03-unit-frames-before-after.png)
 
 ---
 
@@ -274,6 +298,7 @@ Control where Blizzard tooltips appear and reduce combat clutter.
 - Left of cursor
 - Right of cursor
 - At cursor
+- Optionally show spell IDs in the main Blizzard spell tooltip
 - Hide unit tooltips during combat
 - Hide object tooltips during combat
 - Hide corpse tooltips during combat
@@ -347,7 +372,7 @@ If you want Blizzard, just cleaner, that's the point.
 
 Murgle in normal gameplay — Blizzard's UI, with less clutter.
 
-![Murgle during normal gameplay](assets/screenshots/05-murgle-gameplay.png)
+![Murgle during normal gameplay](https://raw.githubusercontent.com/Jordinarily/murgle/main/assets/screenshots/05-murgle-gameplay.png)
 
 ## Installation
 
@@ -375,7 +400,7 @@ WoW Forever only; other WoW clients are not supported.
 
 ### WowUp
 
-WowUp Hub listing: link coming soon.
+[View Murgle on WowUp Hub](https://wowup.io/addons/2797949)
 
 Use Get Addons → Install from URL with:
 
@@ -425,7 +450,7 @@ For bugs, include your Murgle version, what happened and how to reproduce it.
 Suggestions that use native Blizzard functionality with little or no idle overhead
 fit Murgle's focus best.
 
-See the [changelog](CHANGELOG.md) for release details.
+See the [changelog](https://github.com/Jordinarily/murgle/blob/main/CHANGELOG.md) for release details.
 
 ## Support Murgle
 
@@ -440,4 +465,4 @@ Support is completely optional and does not unlock any features.
 Copyright (c) 2026 Jordinarily. All rights reserved.
 
 Murgle is proprietary software available for personal, non-commercial use.
-See [LICENSE](LICENSE) for the full terms.
+See [LICENSE](https://github.com/Jordinarily/murgle/blob/main/LICENSE) for the full terms.

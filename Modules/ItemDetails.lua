@@ -1,7 +1,7 @@
 local _, Murgle = ...
 local ItemDetails = {}
 Murgle.ItemDetails = ItemDetails
-local installed = false
+local itemInstalled, spellInstalled = false, false
 
 local function addUnique(tooltip, text)
     local name = tooltip:GetName()
@@ -17,9 +17,9 @@ local function addUnique(tooltip, text)
     tooltip:AddLine(text, 0.65, 0.75, 0.85)
 end
 
-local function augment(tooltip, data)
+local function augment(tooltip, data, spell)
     if
-        MurgleDB.tooltip.itemDetails ~= true
+        MurgleDB.tooltip[spell and "spellDetails" or "itemDetails"] ~= true
         or tooltip ~= GameTooltip
         or type(data) ~= "table"
         or type(data.id) ~= "number"
@@ -29,6 +29,10 @@ local function augment(tooltip, data)
         or type(tooltip.NumLines) ~= "function"
         or type(tooltip.AddLine) ~= "function"
     then
+        return
+    end
+    if spell then
+        addUnique(tooltip, string.format(Murgle.L.SPELL_ID_LINE, data.id))
         return
     end
     addUnique(tooltip, string.format(Murgle.L.ITEM_ID_LINE, data.id))
@@ -49,8 +53,12 @@ local function augment(tooltip, data)
     end
 end
 
+local function augmentSpell(tooltip, data)
+    augment(tooltip, data, true)
+end
+
 function ItemDetails.ApplyAll()
-    if MurgleDB.tooltip.itemDetails ~= true or installed then
+    if MurgleDB.tooltip.itemDetails ~= true and MurgleDB.tooltip.spellDetails ~= true then
         return
     end
     if
@@ -58,11 +66,24 @@ function ItemDetails.ApplyAll()
         and type(TooltipDataProcessor.AddTooltipPostCall) == "function"
         and Enum
         and Enum.TooltipDataType
-        and type(Enum.TooltipDataType.Item) == "number"
     then
-        -- Blizzard offers no removal API; the disabled callback returns at once.
-        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, augment)
-        installed = true
+        -- Blizzard offers no removal API; disabled callbacks return at once.
+        if
+            MurgleDB.tooltip.itemDetails == true
+            and not itemInstalled
+            and type(Enum.TooltipDataType.Item) == "number"
+        then
+            TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, augment)
+            itemInstalled = true
+        end
+        if
+            MurgleDB.tooltip.spellDetails == true
+            and not spellInstalled
+            and type(Enum.TooltipDataType.Spell) == "number"
+        then
+            TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Spell, augmentSpell)
+            spellInstalled = true
+        end
     end
 end
 ItemDetails.Initialize = ItemDetails.ApplyAll

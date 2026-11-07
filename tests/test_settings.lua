@@ -578,7 +578,6 @@ test("convenience settings expose independent native features and preserve defau
             { M.L.RESTOCK, "lootVendors", "restock" },
             { M.L.CONFIRM_LOOT_PICKUP, "automation", "confirmLootPickup" },
             { M.L.CONFIRM_LOOT_ROLLS, "automation", "confirmLootRolls" },
-            { M.L.CONFIRM_ENCHANT_REPLACE, "automation", "confirmEnchantReplace" },
             { M.L.REWARD_VALUES, "quests", "rewardValues" },
         }
         for _, item in ipairs(checks) do

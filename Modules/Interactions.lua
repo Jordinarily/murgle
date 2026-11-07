@@ -111,7 +111,7 @@ end
 
 local function popupShown(which)
     local settings = MurgleDB.automation
-    if settings.confirmLootPickup ~= true and settings.confirmEnchantReplace ~= true then
+    if settings.confirmLootPickup ~= true then
         return
     end
     generation = generation + 1
@@ -139,15 +139,6 @@ local function popupShown(which)
         end
         accept(which, function(current)
             ConfirmLootSlot(current.data)
-        end)
-    elseif
-        which == "REPLACE_ENCHANT"
-        and settings.confirmEnchantReplace == true
-        and C_Item
-        and type(C_Item.ReplaceEnchant) == "function"
-    then
-        accept(which, function()
-            C_Item.ReplaceEnchant()
         end)
     end
 end
@@ -204,16 +195,12 @@ function Interactions.ApplyAll()
     if type(hooksecurefunc) ~= "function" then
         return
     end
-    for _, which in ipairs({ "LOOT_BIND", "REPLACE_ENCHANT", "CONFIRM_LOOT_ROLL" }) do
+    for _, which in ipairs({ "LOOT_BIND", "CONFIRM_LOOT_ROLL" }) do
         if not definitions[which] and StaticPopupDialogs and type(StaticPopupDialogs[which]) == "table" then
             definitions[which] = StaticPopupDialogs[which]
         end
     end
-    if
-        (settings.confirmLootPickup == true or settings.confirmEnchantReplace == true)
-        and not popupHooked
-        and type(StaticPopup_Show) == "function"
-    then
+    if settings.confirmLootPickup == true and not popupHooked and type(StaticPopup_Show) == "function" then
         hooksecurefunc("StaticPopup_Show", popupShown)
         popupHooked = true
     end
