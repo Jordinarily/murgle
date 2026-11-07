@@ -123,28 +123,6 @@ Item feature toggles start off. Missing or restricted native settings remain una
 
 * * *
 
-### Native camera and dispel setup
-
-The **Native setup** page checks the unmodified mouse wheel's effective bindings.
-**Restore camera wheel zoom** explicitly assigns wheel up/down to camera zoom and
-saves the current account or character binding set. It only changes unbound,
-minimap or camera assignments outside combat; custom bindings and active overrides
-are left alone. Close Blizzard Settings before using it. If camera bindings are
-already correct, a different input handler may need investigation.
-
-**Show dispellable-by-me indicators** explicitly enables native debuff display and
-indicators for effects your character can dispel, while keeping other debuffs
-visible. It changes persistent WoW preferences; use **Party/raid settings** to
-adjust them. Murgle reset does not undo native preferences or saved wheel bindings.
-
-**Party/raid layout** opens Blizzard Edit Mode. Select Party frames and enable
-raid-style party frames there, then choose your own size/layout. **Blizzard
-click-casting settings** lets you bind a learned dispel to your preferred click.
-Murgle does not choose a spell, change your cast bindings or cast automatically.
-These shortcuts and setup actions do no background work.
-
----
-
 ### A cleaner minimap
 
 Keep Blizzard's minimap, but strip away unwanted artwork and buttons.

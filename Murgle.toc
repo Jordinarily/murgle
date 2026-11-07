@@ -30,7 +30,6 @@ Modules/Errors.lua
 Modules/Sound.lua
 Modules/ModifierPaging.lua
 Modules/NativeOptions.lua
-Modules/NativeTools.lua
 Modules/ItemDetails.lua
 Modules/Ammo.lua
 Modules/MarkedJunk.lua

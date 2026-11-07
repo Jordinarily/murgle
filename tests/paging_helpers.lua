@@ -54,11 +54,14 @@ function P.withPaging(fn, initial)
             end
             self.attrs[name] = value
             if self.header and name == "state-page" and self.attrs["_onstate-page"] then
-                assert(loadstring("return function(self,stateid,newstate) " .. self.attrs["_onstate-page"] .. " end"))()(
-                    self,
-                    "page",
-                    value
-                )
+                -- Forever RestrictedExecution.lua BuildRestrictedClosure rejects
+                -- these before compiling, even in a branch that never executes.
+                -- Gethe pin eac30af597e5aaa43a60f6675ef5fdcea100375f,
+                -- Interface/AddOns/Blizzard_RestrictedAddOnEnvironment/RestrictedExecution.lua.
+                local body = self.attrs["_onstate-page"]
+                assert(not body:match("function"), "The function keyword is not permitted")
+                assert(not body:match("[{}]"), "Direct table creation is not permitted")
+                assert(loadstring("return function(self,stateid,newstate) " .. body .. " end"))()(self, "page", value)
             elseif self.UpdateAction then
                 self:UpdateAction()
             end

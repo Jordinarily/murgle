@@ -766,73 +766,7 @@ local function actionPagingPage()
     return page
 end
 
-local function nativeSetupPage()
-    local page = newPage(L.CATEGORY_NATIVE_SETUP)
-    local bindings = label(page, "", 11)
-    bindings:SetPoint("TOPLEFT", 0, -36)
-    bindings:SetSize(410, 40)
-    local stateText = label(page, "", 11)
-    stateText:SetPoint("TOPLEFT", 0, -118)
-    stateText:SetSize(410, 45)
-    local feedback = label(page, "", 11)
-    feedback:SetPoint("TOPLEFT", 0, -282)
-    feedback:SetSize(410, 40)
-    local messages = {
-        done = L.NATIVE_TOOL_DONE,
-        camera = L.NATIVE_TOOL_CAMERA,
-        repairable = L.NATIVE_TOOL_REPAIRABLE,
-        override = L.NATIVE_TOOL_OVERRIDE,
-        custom = L.NATIVE_TOOL_CUSTOM,
-        combat = L.NATIVE_TOOL_COMBAT,
-        settings = L.NATIVE_TOOL_SETTINGS,
-        unavailable = L.NATIVE_TOOL_UNAVAILABLE,
-        failed = L.NATIVE_TOOL_FAILED,
-    }
-    local function report(result)
-        feedback:SetText(messages[result] or L.NATIVE_TOOL_UNAVAILABLE)
-    end
-    local restore, restoreCaption = button(page, L.CAMERA_RESTORE, 205, function()
-        report(Murgle.NativeTools.RestoreCamera())
-        page:Refresh()
-    end)
-    restore:SetPoint("TOPLEFT", 0, -82)
-    helpButton(page, L.CAMERA_RESTORE_HELP, restoreCaption)
-    local function panel(text, which, x, y)
-        local control = button(page, text, 200, function()
-            local result = Murgle.NativeTools.OpenPanel(which)
-            if result == "opened" then
-                Settings.Hide()
-            else
-                report(result)
-            end
-        end)
-        control:SetPoint("TOPLEFT", x, y)
-    end
-    panel(L.CAMERA_BINDINGS, "bindings", 215, -82)
-    panel(L.NATIVE_RAID_SETTINGS, "raid", 0, -170)
-    panel(L.NATIVE_EDIT_MODE, "edit", 215, -170)
-    panel(L.CLICK_CASTING, "casting", 0, -207)
-    local configure, configureCaption = button(page, L.DISPEL_SETUP, 320, function()
-        report(Murgle.NativeTools.ConfigureDispels())
-    end)
-    configure:SetPoint("TOPLEFT", 0, -244)
-    helpButton(page, L.DISPEL_SETUP_HELP, configureCaption)
-    function page:Refresh()
-        local up, down, state = Murgle.NativeTools.CameraBindings()
-        bindings:SetText(
-            string.format(
-                L.CAMERA_WHEELS,
-                up and up ~= "" and up or L.CAMERA_UNBOUND,
-                down and down ~= "" and down or L.CAMERA_UNBOUND
-            )
-        )
-        stateText:SetText(messages[state] or L.NATIVE_TOOL_UNAVAILABLE)
-    end
-    return page
-end
-
 local pageFactories = {
-    NativeSetup = nativeSetupPage,
     ActionPaging = actionPagingPage,
     Items = itemsPage,
     Convenience = conveniencePage,
@@ -1013,7 +947,6 @@ local function createWindow()
     addNavigation("Convenience", L.CATEGORY_CONVENIENCE, 10)
     addNavigation("Items", L.CATEGORY_ITEMS, 11)
     addNavigation("ActionPaging", L.CATEGORY_ACTION_PAGING, 12)
-    addNavigation("NativeSetup", L.CATEGORY_NATIVE_SETUP, 13)
     UISpecialFrames[#UISpecialFrames + 1] = "MurgleSettingsFrame"
     Settings.SelectCategory(selected)
 end
