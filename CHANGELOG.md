@@ -1,12 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- Added separate default-off Items options for automatically opening four known clam types and using newly acquired direct quest-starting items. Quest acceptance stays manual; combat, casting and native item interactions pause use.
-
-- Removed the Native setup page and its camera, dispel and panel tools.
-- Reverted action paging to the v1.3.3 implementation after a secure-snippet regression in v1.3.4. Manual pages 2–6 suspend modifier paging; select page 1 to resume.
-
 ## 1.3.4 — 2026-11-07
 
 - Held action-paging modifiers now override manually selected pages; releasing restores the selected native page. Paging can resume after a temporary attribute conflict clears, while preserving foreign overrides and native special bars.
