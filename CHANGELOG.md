@@ -1,17 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- Held action-paging modifiers now override manually selected pages; releasing restores the selected native page. Paging can resume after a temporary attribute conflict clears, while preserving foreign overrides and native special bars.
-
-- Removed automatic enchant-replacement confirmation so enchants and armor kits retain Blizzard's normal confirmation dialog. Old saved flags no longer activate it.
-
-- Added a Native setup page with on-demand wheel-binding diagnosis and an explicit camera-wheel repair for minimap or unbound assignments, preserving custom bindings and active overrides.
-- Added explicit native dispel-indicator setup and shortcuts to Blizzard party/raid settings, Edit Mode, click casting and camera bindings. Existing debuffs remain visible; spell bindings stay manual.
-
-- Added an independent, default-off spell ID option for the main Blizzard spell tooltip using native tooltip callbacks.
-- Corrected portable README image and document URLs and added the WowUp Hub link.
-
 ## 1.3.3 — 2026-11-06
 
 - Fixed the action-paging checkbox reading an obsolete saved setting, preventing reliable enable and disable behavior.
