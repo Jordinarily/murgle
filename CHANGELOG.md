@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.7 — 2026-11-08
+
+- Removed automatic container opening after blocked-action reports. Containers use Blizzard's normal manual opening; old saved container settings are inert.
+
 ## 1.3.6 — 2026-11-08
 
 - Expanded Automatically open containers to all carried items Blizzard identifies as loot containers, replacing the clam-only restriction. Existing toggle choices and combat/interaction safeguards remain; unlocking and confirmations stay manual.
