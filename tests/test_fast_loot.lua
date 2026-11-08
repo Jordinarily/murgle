@@ -169,27 +169,3 @@ test("Fast Loot missing integration skips startup and can retry on explicit appl
         eq(#s.calls, 3)
     end, true)
 end)
-
-test("Fast Loot setting is available and preserves explicit disabled choice", function()
-    UI.withAddon(function(M, s)
-        eq(MurgleDB.lootVendors.fastLoot, false)
-        M.Settings.Toggle()
-        M.Settings.SelectCategory("LootVendors")
-        local found
-        for _, frame in ipairs(s.frames) do
-            if frame.kind == "CheckButton" then
-                for _, region in ipairs(frame.regions) do
-                    if region.text == M.L.FAST_LOOT then
-                        found = frame
-                    end
-                end
-            end
-        end
-        assert(found, "Fast Loot checkbox")
-        found:SetChecked(true)
-        found.scripts.OnClick(found)
-        eq(MurgleDB.lootVendors.fastLoot, true)
-    end, function()
-        MurgleDB = { lootVendors = { fastLoot = false } }
-    end)
-end)

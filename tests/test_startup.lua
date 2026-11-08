@@ -111,18 +111,8 @@ test("corrupt saved categories recover through manifest startup and every settin
         eq(next(state.frames[1].events), nil)
         eq(#state.frames, 1)
         M.Settings.Show()
-        for _, category in ipairs({
-            "Interface",
-            "Minimap",
-            "Quests",
-            "Automation",
-            "LootVendors",
-            "Chat",
-            "Tooltip",
-            "ErrorsSound",
-        }) do
-            M.Settings.SelectCategory(category)
-        end
+        eq(#state.categories, 6)
+        eq(state.openCategory, state.categories[1]:GetID())
         M.ResetDB()
         eq(M.GetDeferredCount(), 0)
         eq(next(state.frames[1].events), nil)
@@ -173,7 +163,7 @@ test("unavailable saved feature does not prevent startup or the other feature", 
         eq(type(SlashCmdList.MURGLE), "function")
         eq(next(state.frames[1].events), nil)
         SlashCmdList.MURGLE("")
-        eq(state.named.MurgleSettingsFrame:IsShown(), true)
+        eq(state.openCategory, state.categories[1]:GetID())
         M.ResetDB()
         eq(bags.shown, true)
     end, function()

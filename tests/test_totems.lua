@@ -126,31 +126,3 @@ test("missing or protected totem integration fails closed and explicit changes c
         eq(frame.shown, false)
     end, fixture)
 end)
-
-test("saved totem suppression initializes without settings and checkbox resets", function()
-    UI.withAddon(function(M, state)
-        eq(TotemFrame.shown, false)
-        eq(#state.frames, 1)
-        M.Settings.Show()
-        local checkbox
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if region.text == M.L.HIDE_TOTEM_TIMERS then
-                    checkbox = frame
-                end
-            end
-        end
-        assert(checkbox, "totem timer checkbox is available")
-        eq(checkbox:GetChecked(), true)
-        checkbox:SetChecked(false)
-        checkbox.scripts.OnClick(checkbox)
-        eq(MurgleDB.interface.hideTotemTimers, false)
-        eq(TotemFrame.shown, true)
-        setHidden(M, true)
-        M.ResetDB()
-        eq(TotemFrame.shown, true)
-    end, function(M, state)
-        fixture(M, state)
-        MurgleDB = { interface = { hideTotemTimers = true } }
-    end)
-end)

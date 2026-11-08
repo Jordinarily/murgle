@@ -1,5 +1,6 @@
 local H = dofile("tests/helpers.lua")
 local UI = {}
+local Native = dofile("tests/native_settings_helpers.lua")
 
 function UI.withAddon(fn, beforeInitialize)
     local state = { frames = {}, named = {}, popups = {}, messages = {} }
@@ -152,6 +153,25 @@ function UI.withAddon(fn, beforeInitialize)
         return frame
     end
     H.withGlobals({
+        Settings = Native.new(state),
+        MinimalSliderWithSteppersMixin = { Label = { Right = 4 } },
+        SettingsPanel = {
+            CheckIsSettingDefaults = function()
+                return state.defaulting == true
+            end,
+        },
+        CreateSettingsListSectionHeaderInitializer = function(name, tooltip)
+            return Native.initializer({ name = name, tooltip = tooltip })
+        end,
+        CreateSettingsButtonInitializer = function(name, buttonText, buttonClick, tooltip, search)
+            eq(type(search), "boolean")
+            return Native.initializer({
+                name = name,
+                buttonText = buttonText,
+                buttonClick = buttonClick,
+                tooltip = tooltip,
+            })
+        end,
         MerchantFrame = false,
         MerchantSellAllJunkButton = false,
         C_MerchantFrame = false,

@@ -191,46 +191,6 @@ test("World Refresh missing integration leaves native behavior and explicit appl
     end, true)
 end)
 
-test("World Refresh segmented choices preserve enable state and reset restores hide-only", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Automation")
-        local choices = {}
-        local toggle
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if region.text == M.L.AUTO_WORLD_REFRESH then
-                    toggle = frame
-                elseif region.text == M.L.WORLD_REFRESH_HIDE_ONLY then
-                    choices.hideOnly = frame
-                elseif region.text == M.L.WORLD_REFRESH_ACCEPT_HIDE then
-                    choices.acceptAndHide = frame
-                end
-                assert(region.text ~= M.L.WORLD_REFRESH_HARDCORE_NOTE)
-                assert(region.text ~= M.L.WORLD_REFRESH_SCOPE_NOTE)
-            end
-        end
-        assert(choices.hideOnly and choices.acceptAndHide)
-        assert(toggle)
-        eq(choices.acceptAndHide:IsShown(), true)
-        choices.acceptAndHide.scripts.OnClick(choices.acceptAndHide)
-        toggle:SetChecked(false)
-        toggle.scripts.OnClick(toggle)
-        eq(choices.acceptAndHide:IsShown(), false)
-        eq(choices.hideOnly:IsShown(), false)
-        eq(MurgleDB.automation.worldRefreshMode, "acceptAndHide")
-        toggle:SetChecked(true)
-        toggle.scripts.OnClick(toggle)
-        eq(choices.acceptAndHide:IsShown(), true)
-        eq(choices.hideOnly:IsShown(), true)
-        eq(MurgleDB.automation.worldRefreshMode, "acceptAndHide")
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(MurgleDB.automation.worldRefreshMode, "hideOnly")
-        eq(choices.hideOnly:IsShown(), true)
-    end)
-end)
-
 local function toastFixture(s)
     local function make()
         local frame = H.newVisibilityFrame(false)
@@ -379,4 +339,21 @@ test("World Refresh popup after handled toast hides without a second acceptance"
         eq(s.accepted, 1)
         eq(s.hides, 1)
     end, true)
+end)
+
+test("native World Refresh mode preserves enable choice and resets to hide-only", function()
+    UI.withAddon(function(M, s)
+        local enabled = s:setting("automation", "autoWorldRefresh")
+        local mode = s:setting("automation", "worldRefreshMode")
+        local control = s:control("automation", "worldRefreshMode")
+        mode:SetValue("acceptAndHide")
+        enabled:SetValue(false)
+        eq(control:IsEnabled(), false)
+        eq(mode:GetValue(), "acceptAndHide")
+        enabled:SetValue(true)
+        eq(control:IsEnabled(), true)
+        eq(mode:GetValue(), "acceptAndHide")
+        M.ResetDB()
+        eq(mode:GetValue(), "hideOnly")
+    end)
 end)

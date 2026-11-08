@@ -39,7 +39,6 @@ Murgle.DEFAULTS = {
     },
     quests = { sparkles = false, autoWatchReputation = false, rewardValues = false },
     automation = {
-        useQuestStarters = false,
         trainAll = false,
         warnLowRank = false,
         skipServiceGossip = false,
@@ -52,11 +51,9 @@ Murgle.DEFAULTS = {
     },
     lootVendors = {
         ammoCount = false,
-        markedJunk = false,
         markedItems = {},
         disenchantClick = false,
         bulkBuy = false,
-        restock = false,
         restockTargets = {},
         fastLoot = true,
         sellJunk = false,
@@ -81,7 +78,6 @@ Murgle.DEFAULTS = {
     },
     tooltip = {
         itemDetails = false,
-        spellDetails = false,
         cursorAnchor = false,
         anchor = "right",
         hideInCombat = false,
@@ -125,6 +121,12 @@ function Murgle.ApplyDefaults(db)
         db = {}
     end
     fill(db, Murgle.DEFAULTS)
+    -- Retired item-use and vendor controls must not run from saved opt-ins.
+    db.automation.useQuestStarters = nil
+    db.lootVendors.openClams = nil
+    db.lootVendors.markedJunk = nil
+    db.lootVendors.restock = nil
+    db.tooltip.spellDetails = nil
     db.tooltip.compact = nil
     -- Retired native duplicate: preserve the current game preference.
     db.minimap.hideCoordinates = nil

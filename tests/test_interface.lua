@@ -163,42 +163,6 @@ test("tracker cleanup hides only captured headers and restores original visibili
     end)
 end)
 
-test("tracker checkbox defers cleanup and reset refreshes its saved state", function()
-    UI.withAddon(function(M, state)
-        trackerFixtures()
-        QuestObjectiveTracker.Header.shown = true
-        M.Settings.Show()
-        local checkbox
-        for _, f in ipairs(state.frames) do
-            if f.kind == "CheckButton" then
-                for _, region in ipairs(f.regions) do
-                    if region.text == M.L.TRACKER_HEADERS then
-                        checkbox = f
-                    end
-                end
-            end
-        end
-        assert(checkbox, "tracker header checkbox missing")
-        state.combat = true
-        checkbox:SetChecked(true)
-        checkbox.scripts.OnClick(checkbox)
-        eq(MurgleDB.interface.objectiveTrackerHeaders, true)
-        eq(ObjectiveTrackerFrame.Header.changes, 0)
-        state.combat = false
-        local core = state.frames[1]
-        core.scripts.OnEvent(core, "PLAYER_REGEN_ENABLED")
-        eq(ObjectiveTrackerFrame.Header.shown, false)
-        eq(QuestObjectiveTracker.Header.shown, false)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(checkbox:GetChecked(), false)
-        eq(ObjectiveTrackerFrame.Header.shown, true)
-        eq(QuestObjectiveTracker.Header.shown, true)
-        eq(M.GetDeferredCount(), 0)
-        eq(next(core.events), nil)
-    end)
-end)
-
 test("missing tracker section does not block the main header and retries on explicit apply", function()
     UI.withAddon(function(M)
         trackerFixtures()
@@ -346,34 +310,6 @@ test("zone suppression skips protected or incompatible frames without disrupting
     end
 end)
 
-test("zone checkbox persists changes and reset restores its default and event suppression", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local checkbox
-        for _, frame in ipairs(state.frames) do
-            if frame.kind == "CheckButton" then
-                for _, region in ipairs(frame.regions) do
-                    if region.text == M.L.HIDE_ZONE_TEXT then
-                        checkbox = frame
-                    end
-                end
-            end
-        end
-        assert(checkbox, "zone text checkbox missing")
-        eq(checkbox:GetChecked(), true)
-        checkbox:SetChecked(false)
-        checkbox.scripts.OnClick(checkbox)
-        eq(MurgleDB.interface.hideZoneText, false)
-        eq(ZoneTextFrame:IsEventRegistered("ZONE_CHANGED"), true)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(checkbox:GetChecked(), true)
-        eq(ZoneTextFrame:IsEventRegistered("ZONE_CHANGED"), false)
-    end, function()
-        ZoneTextFrame, SubZoneTextFrame = zoneFixture(), zoneFixture()
-    end)
-end)
-
 local function bossFixture(state)
     BossBanner = H.newEventFrame()
     BossBanner.stops = 0
@@ -468,33 +404,6 @@ test("unsupported boss manager fails closed before event or queue changes", func
     end, function(_, state)
         bossFixture(state)
         TopBannerManager_BannerFinished = nil
-    end)
-end)
-
-test("boss checkbox restores native events and reset resumes suppression", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local checkbox
-        for _, frame in ipairs(state.frames) do
-            if frame.kind == "CheckButton" then
-                for _, region in ipairs(frame.regions) do
-                    if region.text == M.L.HIDE_BOSS_BANNER then
-                        checkbox = frame
-                    end
-                end
-            end
-        end
-        assert(checkbox, "boss banner checkbox missing")
-        eq(checkbox:GetChecked(), true)
-        checkbox:SetChecked(false)
-        checkbox.scripts.OnClick(checkbox)
-        eq(BossBanner:IsEventRegistered("BOSS_KILL"), true)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(checkbox:GetChecked(), true)
-        eq(BossBanner:IsEventRegistered("BOSS_KILL"), false)
-    end, function(_, state)
-        bossFixture(state)
     end)
 end)
 
@@ -634,32 +543,6 @@ test("unsupported talking head integration leaves its request event untouched", 
         talkingFixture()
         TalkingHeadFrame.CloseImmediately = nil
     end)
-end)
-
-test("talking head checkbox disables suppression and confirmed reset reenables it", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local checkbox
-        for _, frame in ipairs(state.frames) do
-            if frame.kind == "CheckButton" then
-                for _, region in ipairs(frame.regions) do
-                    if region.text == M.L.HIDE_TALKING_HEAD then
-                        checkbox = frame
-                    end
-                end
-            end
-        end
-        assert(checkbox, "talking head checkbox missing")
-        eq(checkbox:GetChecked(), true)
-        checkbox:SetChecked(false)
-        checkbox.scripts.OnClick(checkbox)
-        eq(MurgleDB.interface.hideTalkingHead, false)
-        eq(TalkingHeadFrame:IsEventRegistered("TALKINGHEAD_REQUESTED"), true)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(checkbox:GetChecked(), true)
-        eq(TalkingHeadFrame:IsEventRegistered("TALKINGHEAD_REQUESTED"), false)
-    end, talkingFixture)
 end)
 
 test("reset before entering world releases the startup retry listener", function()

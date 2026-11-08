@@ -116,46 +116,6 @@ test("action bar fading is inert by default and restores on combat exit and disa
     end)
 end)
 
-test("action bar opacity controls retain choices while disabled and reset to defaults", function()
-    local UI = dofile("tests/ui_helpers.lua")
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local toggle, hide
-        for _, frame in ipairs(state.frames) do
-            if frame.caption and frame.caption.text == M.L.FADE_ACTION_BARS then
-                toggle = frame
-            end
-            if frame.kind == "Button" then
-                for _, region in ipairs(frame.regions) do
-                    if region.text == "0%" then
-                        hide = frame
-                    end
-                end
-            end
-        end
-        assert(toggle and hide, "combat opacity controls are missing")
-        eq(hide:IsShown(), false)
-        toggle:SetChecked(true)
-        toggle.scripts.OnClick(toggle)
-        eq(hide:IsShown(), true)
-        hide.scripts.OnClick(hide)
-        eq(MurgleDB.interface.actionBarCombatOpacity, 0)
-        toggle:SetChecked(false)
-        toggle.scripts.OnClick(toggle)
-        eq(hide:IsShown(), false)
-        eq(MurgleDB.interface.actionBarCombatOpacity, 0)
-        toggle:SetChecked(true)
-        toggle.scripts.OnClick(toggle)
-        eq(hide:IsShown(), true)
-        eq(MurgleDB.interface.actionBarCombatOpacity, 0)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(toggle:GetChecked(), false)
-        eq(hide:IsShown(), false)
-        eq(MurgleDB.interface.actionBarCombatOpacity, 25)
-    end)
-end)
-
 test("action bar zero opacity survives native writes and restores their latest value", function()
     withBars(function(I, state, bar)
         MurgleDB.interface.fadeActionBars = true
@@ -298,5 +258,27 @@ test("missing Edit Mode callback API leaves combat fading functional without man
         state.combat = false
         state:fire("PLAYER_REGEN_ENABLED")
         eq(bar.alpha, 0.8)
+    end)
+end)
+
+test("native opacity controls retain choices while disabled and reset to defaults", function()
+    local UI = dofile("tests/ui_helpers.lua")
+    UI.withAddon(function(M, s)
+        local toggle = s:setting("interface", "fadeActionBars")
+        local opacity = s:setting("interface", "actionBarCombatOpacity")
+        local control = s:control("interface", "actionBarCombatOpacity")
+        eq(control:IsEnabled(), false)
+        toggle:SetValue(true)
+        opacity:SetValue(0)
+        eq(opacity:GetValue(), 0)
+        toggle:SetValue(false)
+        eq(control:IsEnabled(), false)
+        eq(opacity:GetValue(), 0)
+        toggle:SetValue(true)
+        eq(control:IsEnabled(), true)
+        eq(opacity:GetValue(), 0)
+        M.ResetDB()
+        eq(toggle:GetValue(), false)
+        eq(opacity:GetValue(), 25)
     end)
 end)

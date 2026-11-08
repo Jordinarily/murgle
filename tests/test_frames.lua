@@ -336,46 +336,6 @@ test("clean target does not restore an obsolete level badge visibility", functio
     end)
 end)
 
-test("unit frame page applies native modes and Disable all relinquishes them", function()
-    local UI = dofile("tests/ui_helpers.lua")
-    local values = { nameplateShowEnemies = "1", nameplateShowFriendlyPlayers = "1" }
-    H.withGlobals({
-        C_CVar = {
-            GetCVarInfo = function(key)
-                return values[key], "1", true, false, false, false, false
-            end,
-            SetCVar = function(key, value)
-                values[key] = value
-                return true
-            end,
-        },
-    }, function()
-        UI.withAddon(function(M, state)
-            M.Settings.Show()
-            local start = #state.frames
-            M.Settings.SelectCategory("Frames")
-            local hidden
-            for i = start + 1, #state.frames do
-                local control = state.frames[i]
-                for _, r in ipairs(control.regions) do
-                    if r.text == M.L.HIDDEN and not hidden then
-                        hidden = control
-                    end
-                end
-            end
-            assert(hidden, "native nameplate choices missing")
-            hidden.scripts.OnClick(hidden)
-            eq(values.nameplateShowEnemies, "0")
-            eq(values.nameplateShowFriendlyPlayers, "1")
-            MurgleDB.frames.enemyNameplates = "blizzard"
-            MurgleDB.frames.friendlyNameplates = "blizzard"
-            M.Frames.ApplyAll()
-            eq(values.nameplateShowEnemies, "1")
-            eq(MurgleDB.frames.enemyNameplates, "blizzard")
-        end)
-    end)
-end)
-
 test("clean player status preserves current native tint and restores after repeated hidden updates", function()
     withFrames(function(F, s, p, t, pm)
         PlayerFrame_UpdateStatus = function()

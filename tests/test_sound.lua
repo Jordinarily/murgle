@@ -118,47 +118,6 @@ test("sound requires reversible APIs and retries when they become available", fu
     end)
 end)
 
-test("sound settings persist and reset unmutes without changing error filtering", function()
-    H.withGlobals({
-        MuteSoundFile = function() end,
-        UnmuteSoundFile = function() end,
-    }, function()
-        UI.withAddon(function(M, state)
-            local muted, unmuted = 0, 0
-            MuteSoundFile = function()
-                muted = muted + 1
-            end
-            UnmuteSoundFile = function()
-                unmuted = unmuted + 1
-            end
-            M.Settings.Show()
-            M.Settings.SelectCategory("ErrorsSound")
-            eq(type(M.L.MUTE_FIZZLE), "string")
-            local check
-            for _, frame in ipairs(state.frames) do
-                if frame.kind == "CheckButton" then
-                    for _, region in ipairs(frame.regions) do
-                        if region.text == M.L.MUTE_FIZZLE then
-                            check = frame
-                        end
-                    end
-                end
-            end
-            assert(check, "fizzle checkbox")
-            check:SetChecked(true)
-            check.scripts.OnClick(check)
-            eq(MurgleDB.sound.muteFizzle, true)
-            eq(muted, 5)
-            eq(MurgleDB.errors.mode, "important")
-            M.Settings.ConfirmReset()
-            StaticPopupDialogs.MURGLE_RESET.OnAccept()
-            eq(MurgleDB.sound.muteFizzle, false)
-            eq(unmuted, 5)
-            eq(check:GetChecked(), false)
-        end)
-    end)
-end)
-
 test("curated train and mechanostrider mutes own only their explicit nonoverlapping files", function()
     withSound(function(S, muted, unmuted)
         MurgleDB.sound.muteTrains = true

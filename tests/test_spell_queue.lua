@@ -84,35 +84,22 @@ test("spell queue saved explicit preference applies once at startup", function()
     end, { interface = { spellQueueWindow = 210 } })
 end)
 
-test("spell queue slider refresh never writes and user input changes the native value", function()
+test("native spell queue control reads without writes and preserves manual values", function()
     withQueue(function(M, state, ui)
         M.Settings.Show()
-        M.Settings.SelectCategory("Automation")
-        local slider, help
-        for _, frame in ipairs(ui.frames) do
-            if frame.kind == "Slider" then
-                slider = frame
-            end
-            if frame.scripts.OnEnter and frame.scripts.OnLeave then
-                help = frame
-            end
-        end
-        assert(slider, "native spell queue slider missing")
-        assert(help, "spell queue help missing")
+        local setting = ui:setting("interface", "spellQueueWindow")
+        eq(setting:GetValue(), 175)
+        M.Settings.Refresh()
         eq(state.writes, 0)
-        eq(slider.value, 175)
-        slider:SetValue(231)
+        setting:SetValue(231)
         eq(state.value, "230")
-        eq(slider.value, 230)
+        eq(setting:GetValue(), 230)
         M.ResetDB()
-        M.Settings.SelectCategory("Automation")
-        eq(slider.value, 400)
-        eq(slider.scripts.OnUpdate, nil)
-        eq(help.scripts.OnUpdate, nil)
+        eq(setting:GetValue(), 400)
     end)
 end)
 
-test("spell queue auto detect samples world latency only on click and preserves manual adjustment", function()
+test("native latency suggestion samples only on click and permits manual adjustment", function()
     local samples = 0
     H.withGlobals({
         GetNetStats = function()
@@ -122,31 +109,14 @@ test("spell queue auto detect samples world latency only on click and preserves 
     }, function()
         withQueue(function(M, state, ui)
             M.Settings.Show()
-            M.Settings.SelectCategory("Automation")
-            local slider, auto
-            for _, frame in ipairs(ui.frames) do
-                if frame.kind == "Slider" then
-                    slider = frame
-                elseif frame.kind == "Button" then
-                    for _, region in ipairs(frame.regions) do
-                        if region.text == M.L.SPELL_QUEUE_AUTO and region.text ~= nil then
-                            auto = frame
-                        end
-                    end
-                end
-            end
-            assert(auto, "auto detect button missing")
-            assert(slider, "manual slider missing")
             eq(samples, 0)
             eq(state.writes, 0)
-            auto.scripts.OnClick(auto)
+            ui:action(M.L.SPELL_QUEUE_AUTO)
             eq(samples, 1)
             eq(state.value, "240")
-            eq(slider.value, 240)
-            eq(MurgleDB.interface.spellQueueWindow, 240)
-            slider:SetValue(180)
+            ui:setting("interface", "spellQueueWindow"):SetValue(180)
             eq(state.value, "180")
-            M.Settings.SelectCategory("Automation")
+            M.Settings.Refresh()
             eq(samples, 1)
         end)
     end)

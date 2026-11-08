@@ -57,59 +57,6 @@ test("chat controls fail independently and do not retry missing frames", functio
     end)
 end)
 
-test("chat checkbox changes defer in combat and confirmed reset restores controls", function()
-    UI.withAddon(function(M, state)
-        fixtures()
-        ChatFrameChannelButton.shown = true
-        M.Settings.Show()
-        local start = #state.frames
-        M.Settings.SelectCategory("Chat")
-        local controls = {}
-        for i = start + 1, #state.frames do
-            local f = state.frames[i]
-            if f.kind == "CheckButton" then
-                controls[#controls + 1] = f
-            end
-        end
-        eq(#controls, 3)
-        state.combat = true
-        for _, control in ipairs(controls) do
-            control:SetChecked(true)
-            control.scripts.OnClick(control)
-        end
-        eq(MurgleDB.chat.hideButtons, true)
-        eq(MurgleDB.chat.hideVoiceButtons, true)
-        eq(MurgleDB.chat.hideCombatLog, true)
-        eq(MurgleDB.interface.hideButtons, nil)
-        eq(ChatFrameMenuButton.changes, 0)
-        eq(ChatFrame2Tab.changes, 0)
-        state.combat = false
-        local core = state.frames[1]
-        core.scripts.OnEvent(core, "PLAYER_REGEN_ENABLED")
-        eq(ChatFrameMenuButton.shown, false)
-        eq(ChatFrameChannelButton.shown, false)
-        eq(ChatFrame2Tab.shown, false)
-        state.combat = true
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(ChatFrameMenuButton.shown, false)
-        for _, control in ipairs(controls) do
-            eq(control:GetChecked(), false)
-        end
-        state.combat = false
-        core.scripts.OnEvent(core, "PLAYER_REGEN_ENABLED")
-        eq(ChatFrameMenuButton.shown, true)
-        eq(ChatFrameChannelButton.shown, true)
-        eq(ChatFrame2Tab.shown, true)
-        eq(M.GetDeferredCount(), 0)
-        eq(next(core.events), nil)
-        local count = #state.frames
-        M.Settings.SelectCategory("Interface")
-        M.Settings.SelectCategory("Chat")
-        eq(#state.frames, count)
-    end)
-end)
-
 test("reset before combat ends cancels pending chat hiding", function()
     UI.withAddon(function(M, state)
         assert(M.Chat, "chat module must be loaded")

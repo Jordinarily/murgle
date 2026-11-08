@@ -1,728 +1,247 @@
 local UI = dofile("tests/ui_helpers.lua")
+local H = dofile("tests/helpers.lua")
 
-local function clickText(state, text)
-    for _, frame in ipairs(state.frames) do
-        if frame.kind == "Button" then
-            for _, region in ipairs(frame.regions) do
-                if region.text == text then
-                    frame.scripts.OnClick(frame)
-                    return
+test("native Settings registers six sections once without constructing controls", function()
+    UI.withAddon(function(M, s)
+        eq(#s.categories, 6)
+        eq(s.categories[1].name, "Murgle")
+        local names = { "Combat & Frames", "Map & Quests", "Items & Services", "Chat & Tooltips", "Errors & Sound" }
+        for i, name in ipairs(names) do
+            eq(s.categories[i + 1].name, name)
+            eq(s.categories[i + 1].parent, s.categories[1])
+        end
+        eq(s.addonCategory, s.categories[1])
+        eq(s.named.MurgleSettingsFrame, nil)
+        local count = #s.frames
+        M.Settings.Initialize()
+        SlashCmdList.MURGLE("")
+        eq(s.openCategory, s.categories[1]:GetID())
+        eq(#s.categories, 6)
+        eq(#s.frames, count)
+        eq(#UISpecialFrames, 0)
+    end)
+end)
+
+test("native controls cover every current saved primitive without retired options", function()
+    UI.withAddon(function(M, s)
+        for group, defaults in pairs(M.DEFAULTS) do
+            if type(defaults) == "table" then
+                for key, value in pairs(defaults) do
+                    if type(value) ~= "table" then
+                        local setting = s:setting(group, key)
+                        eq(setting:GetValue(), MurgleDB[group][key], group .. "." .. key)
+                    end
                 end
             end
         end
-    end
-    error("button not found: " .. text)
-end
-
-test("settings create nothing at startup and toggle a reused window on demand", function()
-    UI.withAddon(function(M, state)
-        eq(#state.frames, 1)
-        eq(next(StaticPopupDialogs), nil)
-        eq(type(M.Settings.Toggle), "function")
-        SlashCmdList.MURGLE("")
-        local window = state.named.MurgleSettingsFrame
-        eq(window:IsShown(), true)
-        eq(UISpecialFrames[1], "MurgleSettingsFrame")
-        local created = #state.frames
-        SlashCmdList.MURGLE("")
-        eq(window:IsShown(), false)
-        SlashCmdList.MURGLE("")
-        eq(window:IsShown(), true)
-        eq(#state.frames, created)
-        for _, frame in ipairs(state.frames) do
-            eq(frame.scripts.OnUpdate, nil)
-            eq(next(frame.events), nil)
-        end
-    end)
-end)
-
-test("interface checkbox and reset use the real combat queue and restore the frame", function()
-    UI.withAddon(function(M, state)
-        local menu = { shown = true }
-        function menu:IsShown()
-            return self.shown
-        end
-        function menu:Hide()
-            self.shown = false
-        end
-        function menu:Show()
-            self.shown = true
-        end
-        MicroMenu = menu
-        M.Settings.Show()
-        local checkbox
-        for _, frame in ipairs(state.frames) do
-            if frame.kind == "CheckButton" then
-                checkbox = frame
-                break
+        eq(s.settings.Murgle_lootVendors_openClams, nil)
+        eq(s.settings.Murgle_automation_confirmEnchantReplace, nil)
+        for _, c in ipairs(s.controls) do
+            assert(c.buttonText ~= M.L.ENABLE_ALL and c.buttonText ~= M.L.DISABLE_ALL)
+            if c.setting then
+                assert(c.help and c.help ~= "")
             end
         end
-        assert(checkbox)
-        local core = state.frames[1]
-        state.combat = true
-        checkbox:SetChecked(true)
-        checkbox.scripts.OnClick(checkbox)
-        eq(MurgleDB.interface.hideMicroMenu, true)
-        eq(menu.shown, true)
-        eq(M.GetDeferredCount(), 1)
-        eq(core:IsEventRegistered("PLAYER_REGEN_ENABLED"), true)
-        state.combat = false
-        core.scripts.OnEvent(core, "PLAYER_REGEN_ENABLED")
-        eq(menu.shown, false)
-        eq(M.GetDeferredCount(), 0)
-        eq(next(core.events), nil)
-        state.combat = true
+    end)
+end)
+
+test("proxy controls preserve saved choices and resolve replacement DB after reset", function()
+    UI.withAddon(function(M, s)
+        local old = MurgleDB.interface
+        local setting = s:setting("interface", "hideMicroMenu")
+        eq(setting:GetValue(), true)
         M.Settings.ConfirmReset()
+        eq(MurgleDB.interface, old, "reset must wait for confirmation")
         StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(checkbox:GetChecked(), false)
-        eq(menu.shown, false)
-        eq(M.GetDeferredCount(), 1)
-        state.combat = false
-        core.scripts.OnEvent(core, "PLAYER_REGEN_ENABLED")
-        eq(menu.shown, true)
-        eq(M.GetDeferredCount(), 0)
-        eq(next(core.events), nil)
-    end)
-end)
-
-test("category navigation lazily creates one page then reuses it across reopen", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local created = #state.frames
-        clickText(state, "Minimap")
-        assert(#state.frames > created)
-        local pageCreated = #state.frames
-        local minimapPage = state.frames[created + 1]
-        eq(minimapPage:IsShown(), true)
-        clickText(state, "Interface")
-        eq(#state.frames, pageCreated)
-        eq(minimapPage:IsShown(), false)
-        clickText(state, "Minimap")
-        M.Settings.Hide()
-        M.Settings.Show()
-        eq(minimapPage:IsShown(), true)
-        eq(#state.frames, pageCreated)
-        eq(MurgleDB.selectedCategory, nil)
-        M.Settings.SelectCategory("unrecognized")
-        eq(minimapPage:IsShown(), true)
-        eq(#state.frames, pageCreated)
-    end)
-end)
-
-test("close button hides the settings window without destroying its pages", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local created = #state.frames
-        clickText(state, "Close")
-        eq(state.named.MurgleSettingsFrame:IsShown(), false)
-        M.Settings.Show()
-        eq(#state.frames, created)
-    end)
-end)
-
-test("reset is lazy and changes nothing until explicitly accepted", function()
-    UI.withAddon(function(M, state)
-        MurgleDB.interface.hideTalkingHead = false
-        local before = MurgleDB
-        SlashCmdList.MURGLE("R")
-        eq(#state.frames, 1, "reset command must not build the settings window")
-        eq(#state.popups, 1)
-        local popup = StaticPopupDialogs[state.popups[1]]
-        eq(type(popup), "table")
-        eq(popup.hideOnEscape, true)
-        eq(MurgleDB, before)
-        eq(MurgleDB.interface.hideTalkingHead, false)
-        if popup.OnCancel then
-            popup.OnCancel()
-        end
-        eq(MurgleDB, before)
-        M.Settings.Show()
-        popup.OnAccept()
-        eq(MurgleDB == before, false)
-        eq(MurgleDB.interface.hideTalkingHead, true)
-        eq(state.named.MurgleSettingsFrame:IsShown(), true)
-        SlashCmdList.MURGLE("reset")
-        eq(StaticPopupDialogs[state.popups[2]], popup)
-    end)
-end)
-
-test("interface checkboxes persist choices and reset refreshes cached controls", function()
-    UI.withAddon(function(M, state)
-        local menuCalls, bagCalls = 0, 0
-        M.Interface = {
-            IsBetaBuild = function()
-                return false
-            end,
-            ApplyMicroMenu = function()
-                menuCalls = menuCalls + 1
-            end,
-            ApplyBagBar = function()
-                bagCalls = bagCalls + 1
-            end,
-            ApplyAll = function() end,
-        }
-        M.Settings.Show()
-        local checks = {}
-        for _, frame in ipairs(state.frames) do
-            if frame.kind == "CheckButton" then
-                checks[#checks + 1] = frame
-            end
-        end
-        eq(#checks, 14)
-        eq(checks[1]:GetChecked(), false)
-        checks[1]:SetChecked(true)
-        checks[1].scripts.OnClick(checks[1])
+        assert(MurgleDB.interface ~= old)
+        eq(setting:GetValue(), false)
+        setting:SetValue(true)
         eq(MurgleDB.interface.hideMicroMenu, true)
-        eq(menuCalls, 1)
-        checks[2]:SetChecked(true)
-        checks[2].scripts.OnClick(checks[2])
-        eq(MurgleDB.interface.hideBagBar, true)
-        eq(bagCalls, 1)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(checks[1]:GetChecked(), false)
-        eq(checks[2]:GetChecked(), false)
+        assert(s.notifications > 0)
+    end, function()
+        MurgleDB = { interface = { hideMicroMenu = true } }
     end)
 end)
 
-test("XP checkbox persists hide choice and confirmed reset restores native display", function()
-    UI.withAddon(function(M, state)
+test("native setter uses only the selected feature apply path", function()
+    UI.withAddon(function(M, s)
         local calls = 0
-        M.Interface.ApplyXP = function()
+        M.Interface.ApplyMicroMenu = function()
             calls = calls + 1
         end
-        M.Settings.Show()
-        eq(MurgleDB.interface.hideXP, false)
-        local control
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if M.L.HIDE_XP and region.text == M.L.HIDE_XP then
-                    control = frame
-                end
-            end
+        M.ApplyAllSettings = function()
+            error("blanket apply")
         end
-        assert(control, "Hide XP bar checkbox exists")
-        control:SetChecked(true)
-        control.scripts.OnClick(control)
-        eq(MurgleDB.interface.hideXP, true)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(MurgleDB.interface.hideXP, false)
-        eq(control:GetChecked(), false)
+        s:setting("interface", "hideMicroMenu"):SetValue(true)
+        eq(calls, 1)
+        eq(MurgleDB.interface.hideMicroMenu, true)
+        eq(MurgleDB.interface.hideBagBar, false)
     end)
 end)
 
-test("beta navigation is absent outside beta including direct selection", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local count = #state.frames
-        M.Settings.SelectCategory("Beta")
-        eq(#state.frames, count)
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                assert(region.text ~= "Beta", "beta navigation on non-beta client")
-                assert(region.text ~= "Performance", "removed category remains")
-            end
-        end
-    end)
-end)
-
-test("bulk changes restore owned frames and last combat choice wins", function()
-    UI.withAddon(function(M, state)
-        local H = dofile("tests/helpers.lua")
-        MicroMenu = H.newVisibilityFrame(true)
-        M.Settings.Show()
-        clickText(state, "Disable all")
-        clickText(state, "Enable all")
-        eq(MicroMenu.shown, false)
-        state.combat = true
-        clickText(state, "Disable all")
-        clickText(state, "Enable all")
-        clickText(state, "Disable all")
-        eq(MicroMenu.shown, false)
-        state.combat = false
-        local core = state.frames[1]
-        core.scripts.OnEvent(core, "PLAYER_REGEN_ENABLED")
-        eq(MicroMenu.shown, true)
-        eq(M.GetDeferredCount(), 0)
-        eq(MurgleDB.lootVendors.sellJunk, false)
-    end)
-end)
-
-test("removed reward values have no runtime module or settings control", function()
-    UI.withAddon(function(M, state)
-        eq(M.RewardValues, nil)
-        eq(M.DEFAULTS.quests.rewardSellValues, nil)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Quests")
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                assert(region.text ~= "Show reward sell values")
-            end
-        end
-    end)
-end)
-
-test("settings header drags the window without making controls draggable", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local window = state.named.MurgleSettingsFrame
-        eq(window.movable, true)
-        eq(window.clamped, true)
-        local header
-        for _, frame in ipairs(state.frames) do
-            if frame.dragButton then
-                header = frame
-            end
-            if frame.kind == "Button" or frame.kind == "CheckButton" then
-                eq(frame.scripts.OnDragStart, nil)
-            end
-        end
-        assert(header, "header drag surface missing")
-        header.scripts.OnDragStart(header)
-        eq(window.moving, true)
-        header.scripts.OnDragStop(header)
-        eq(window.moving, false)
-        eq(window.scripts.OnUpdate, nil)
-        eq(MurgleDB.position, nil)
-    end)
-end)
-
-test("both page bulk buttons remain available after individual settings and reset", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local function countBulk()
-            local count = 0
-            for _, frame in ipairs(state.frames) do
-                if frame.kind == "Button" then
-                    for _, region in ipairs(frame.regions) do
-                        if region.text == "Enable all" or region.text == "Disable all" then
-                            count = count + 1
-                        end
-                    end
-                end
-            end
-            return count
-        end
-        eq(countBulk(), 2)
-        clickText(state, "Disable all")
-        eq(MurgleDB.automation.autoQuest, false)
-        local menu = state.frames[1]
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if region.text == M.L.HIDE_MICRO_MENU then
-                    menu = frame
-                end
-            end
-        end
-        menu:SetChecked(true)
-        menu.scripts.OnClick(menu)
-        clickText(state, "Disable all")
-        eq(MurgleDB.interface.hideMicroMenu, false)
-        clickText(state, "Reset Murgle")
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        clickText(state, "Disable all")
-        eq(MurgleDB.interface.hideTalkingHead, false)
-        eq(countBulk(), 2)
-    end)
-end)
-
-test("bulk sound action refreshes independent mutes and leaves automation untouched", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        M.Settings.SelectCategory("ErrorsSound")
-        clickText(state, "Mute all listed")
-        eq(MurgleDB.sound.muteFizzle, true)
-        eq(MurgleDB.sound.muteTrains, true)
-        eq(MurgleDB.sound.muteMechanicalSteps, true)
-        eq(MurgleDB.sound.muteErrorSpeech, true)
-        eq(MurgleDB.automation.autoQuest, false)
-        clickText(state, "Unmute all listed")
-        eq(MurgleDB.sound.muteFizzle, false)
-        eq(MurgleDB.sound.muteTrains, false)
-        eq(MurgleDB.sound.muteMechanicalSteps, false)
-        eq(MurgleDB.sound.muteErrorSpeech, false)
-    end)
-end)
-
-test("page bulk preserves mutually exclusive chat tab modes", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        clickText(state, "Disable all")
-        M.Settings.SelectCategory("Chat")
-        for _, choice in ipairs({ { "Fade", "mouseover" }, { "Hide", "hide" }, { "Default", "show" } }) do
-            clickText(state, choice[1])
-            eq(MurgleDB.chat.tabs, choice[2])
-            clickText(state, "Enable all")
-            eq(MurgleDB.chat.tabs, choice[2])
-            clickText(state, "Disable all")
-            eq(MurgleDB.chat.tabs, choice[2])
-            eq(MurgleDB.automation.autoQuest, false)
-        end
-    end)
-end)
-
-test("expanded sound choices support independent controls bulk actions and reset", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        M.Settings.SelectCategory("ErrorsSound")
-        clickText(state, "Disable all")
-        local choices = {
-            { "muteFootsteps", "MUTE_FOOTSTEPS" },
-            { "muteHooves", "MUTE_HOOVES" },
-            { "muteChimes", "MUTE_CHIMES" },
-            { "muteInterface", "MUTE_INTERFACE" },
-            { "muteReadyCheck", "MUTE_READY_CHECK" },
-            { "muteCatYawns", "MUTE_CAT_YAWNS" },
-            { "mutePiccolo", "MUTE_PICCOLO" },
-            { "muteMechanostriders", "MUTE_MECHANOSTRIDERS" },
-            { "muteZeppelins", "MUTE_ZEPPELINS" },
-        }
-        for _, choice in ipairs(choices) do
-            eq(MurgleDB.sound[choice[1]], false)
-            local control
-            for _, frame in ipairs(state.frames) do
-                if frame.kind == "CheckButton" then
-                    for _, region in ipairs(frame.regions) do
-                        if M.L[choice[2]] and region.text == M.L[choice[2]] then
-                            control = frame
-                        end
-                    end
-                end
-            end
-            assert(control, choice[1] .. " control missing")
-            control:SetChecked(true)
-            control.scripts.OnClick(control)
-            eq(MurgleDB.sound[choice[1]], true)
-            clickText(state, "Disable all")
-            eq(control:GetChecked(), false)
-        end
-        clickText(state, "Mute all listed")
-        for _, choice in ipairs(choices) do
-            eq(MurgleDB.sound[choice[1]], true)
-        end
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        for _, choice in ipairs(choices) do
-            eq(MurgleDB.sound[choice[1]], false)
-        end
-    end)
-end)
-
-test("page bulk buttons change only independent current page booleans", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        MurgleDB.interface.objectiveTrackerVisibility = "ooc"
-        MurgleDB.interface.trackerFontSize = 10
-        MurgleDB.interface.spellQueueWindow = 230
-        MurgleDB.sound.muteFizzle = true
-        clickText(state, "Disable all")
-        eq(MurgleDB.interface.hideTalkingHead, false)
-        eq(MurgleDB.interface.objectiveTrackerVisibility, "ooc")
+test("native choices reject invalid values and preserve numeric tracker sizes", function()
+    UI.withAddon(function(_, s)
+        local font = s:setting("interface", "trackerFontSize")
+        font:SetValue("10")
         eq(MurgleDB.interface.trackerFontSize, 10)
-        eq(MurgleDB.interface.spellQueueWindow, 230)
-        eq(MurgleDB.sound.muteFizzle, true)
-        eq(MurgleDB.automation.autoWorldRefresh, true)
-        clickText(state, "Enable all")
-        eq(MurgleDB.interface.hideMicroMenu, true)
-        M.Settings.SelectCategory("Automation")
-        MurgleDB.automation.worldRefreshMode = "acceptAndHide"
-        clickText(state, "Disable all")
-        eq(MurgleDB.automation.autoWorldRefresh, false)
-        eq(MurgleDB.automation.worldRefreshMode, "acceptAndHide")
-        eq(MurgleDB.interface.hideMicroMenu, true)
-        M.Settings.SelectCategory("Chat")
-        MurgleDB.chat.tabs = "mouseover"
-        clickText(state, "Enable all")
-        eq(MurgleDB.chat.hideButtons, true)
-        eq(MurgleDB.chat.tabs, "mouseover")
-        clickText(state, "Disable all")
-        eq(MurgleDB.chat.tabs, "mouseover")
+        eq(font:GetValue(), "10")
+        font:SetValue("99")
+        eq(MurgleDB.interface.trackerFontSize, 10)
+        s:setting("automation", "worldRefreshMode"):SetValue("not-a-mode")
+        eq(MurgleDB.automation.worldRefreshMode, "hideOnly")
     end)
 end)
 
-test("removed reporter and version UI stay absent even with legacy beta settings", function()
-    UI.withAddon(function(M, state)
-        eq(M.Interface.ApplyZoneBug, nil)
-        eq(M.Interface.IsBetaBuild, nil)
-        eq(M.L.HIDE_ISSUE_REPORTER, nil)
-        M.Settings.Show()
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                assert(region.text ~= "Hide Issue Reporter")
-                assert(region.text ~= M.GetVersion())
-            end
-        end
-    end, function()
-        IsBetaBuild = function()
-            error("retired beta probe called")
-        end
-        MurgleDB = { interface = { hideZoneBug = true } }
-    end)
-end)
-
-test("help stays behind tooltips and leaving another owner does not hide it", function()
-    UI.withAddon(function(M, state)
-        local tip = { hidden = 0 }
-        function tip:SetOwner(owner)
-            self.owner = owner
-        end
-        function tip:GetOwner()
-            return self.owner
-        end
-        function tip:SetText(text)
-            self.text = text
-        end
-        function tip:Show() end
-        function tip:Hide()
-            self.hidden = self.hidden + 1
-        end
-        GameTooltip = tip
-        M.Settings.Show()
-        for _, category in ipairs({ "Chat", "Tooltip", "Automation", "LootVendors", "Quests", "ErrorsSound" }) do
-            M.Settings.SelectCategory(category)
-        end
-        local foundChat, foundWarning = false, false
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                assert(region.text ~= M.L.CHAT_TABS_MOUSEOVER_NOTE)
-                assert(region.text ~= M.L.WORLD_REFRESH_HARDCORE_NOTE)
-            end
-            if frame.scripts.OnEnter then
-                frame.scripts.OnEnter(frame)
-                foundChat = foundChat or tip.text:find("Hover chat to reveal faded tabs.", 1, true) ~= nil
-                foundWarning = foundWarning or tip.text:find(M.L.WORLD_REFRESH_HARDCORE_NOTE, 1, true) ~= nil
-                tip.owner = {}
-                local hidden = tip.hidden
-                frame.scripts.OnLeave(frame)
-                eq(tip.hidden, hidden)
-                tip.owner = frame
-                frame.scripts.OnLeave(frame)
-                eq(tip.hidden, hidden + 1)
-            end
-        end
-        eq(foundChat, true)
-        eq(foundWarning, true)
-    end)
-end)
-
-test("page bulk keeps tooltip error and nameplate modes while changing independent booleans", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Tooltip")
-        MurgleDB.tooltip.anchor = "left"
-        clickText(state, "Enable all")
-        eq(MurgleDB.tooltip.cursorAnchor, true)
-        eq(MurgleDB.tooltip.compact, nil)
-        eq(MurgleDB.tooltip.anchor, "left")
-        M.Settings.SelectCategory("ErrorsSound")
-        MurgleDB.errors.mode = "important"
-        clickText(state, "Enable all")
-        eq(MurgleDB.sound.muteFizzle, true)
-        eq(MurgleDB.errors.mode, "important")
-        clickText(state, "Disable all")
-        eq(MurgleDB.sound.muteFizzle, false)
-        eq(MurgleDB.errors.mode, "important")
-        M.Settings.SelectCategory("Frames")
-        MurgleDB.frames.enemyNameplates = "combat"
-        MurgleDB.frames.friendlyNameplates = "hidden"
-        clickText(state, "Enable all")
-        eq(MurgleDB.frames.hidePlayerName, true)
-        clickText(state, "Disable all")
-        eq(MurgleDB.frames.hidePlayerName, false)
-        eq(MurgleDB.frames.enemyNameplates, "combat")
-        eq(MurgleDB.frames.friendlyNameplates, "hidden")
-        eq(MurgleDB.tooltip.cursorAnchor, true)
-    end)
-end)
-
-test("bag position settings persist the toggle and reset the saved anchor", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local control
-        for _, frame in ipairs(state.frames) do
-            if frame.kind == "CheckButton" and frame.caption.text == M.L.MOVE_BAGS then
-                control = frame
-            end
-        end
-        assert(control)
-        eq(control:GetChecked(), false)
-        control:SetChecked(true)
-        control.scripts.OnClick(control)
-        eq(MurgleDB.interface.moveBags, true)
-        MurgleDB.interface.bagPosition = { x = 40, y = 20 }
-        clickText(state, M.L.RESET_BAG_POSITION)
-        eq(MurgleDB.interface.bagPosition, nil)
-        eq(MurgleDB.interface.moveBags, true)
-        M.ResetDB()
-        eq(MurgleDB.interface.moveBags, false)
-    end)
-end)
-
-test("convenience settings expose independent native features and preserve defaults on reset", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Convenience")
-        local found = {}
-        for _, frame in ipairs(state.frames) do
-            if frame.kind == "CheckButton" and frame.caption then
-                found[frame.caption.text] = frame
-            end
-        end
-        local checks = {
-            { M.L.TRAIN_ALL, "automation", "trainAll" },
-            { M.L.WARN_LOW_RANK_LABEL, "automation", "warnLowRank" },
-            { M.L.SKIP_SERVICE_GOSSIP, "automation", "skipServiceGossip" },
-            { M.L.DISENCHANT_CLICK, "lootVendors", "disenchantClick" },
-            { M.L.BULK_BUY, "lootVendors", "bulkBuy" },
-            { M.L.RESTOCK, "lootVendors", "restock" },
-            { M.L.CONFIRM_LOOT_PICKUP, "automation", "confirmLootPickup" },
-            { M.L.CONFIRM_LOOT_ROLLS, "automation", "confirmLootRolls" },
-            { M.L.REWARD_VALUES, "quests", "rewardValues" },
-        }
-        for _, item in ipairs(checks) do
-            local checkbox = assert(found[item[1]], item[1] .. " missing")
-            eq(checkbox:GetChecked(), false)
-            checkbox:SetChecked(true)
-            checkbox.scripts.OnClick(checkbox)
-            eq(MurgleDB[item[2]][item[3]], true)
-        end
-        MurgleDB.lootVendors.restockTargets[123] = 20
-        clickText(state, M.L.CLEAR_RESTOCK)
-        eq(next(MurgleDB.lootVendors.restockTargets), nil)
-        M.ResetDB()
-        for _, item in ipairs(checks) do
-            eq(MurgleDB[item[2]][item[3]], false)
-        end
-    end)
-end)
-
-test("click-casting shortcut opens only native settings outside combat without altering bindings", function()
-    UI.withAddon(function(M, state)
-        local calls = 0
-        local H = dofile("tests/helpers.lua")
-        H.withGlobals({
-            ToggleClickBindingFrame = function()
-                calls = calls + 1
-            end,
-        }, function()
-            M.Settings.Show()
-            M.Settings.SelectCategory("Convenience")
-            clickText(state, M.L.CLICK_CASTING)
-            eq(calls, 1)
-            state.combat = true
-            clickText(state, M.L.CLICK_CASTING)
-            eq(calls, 1)
-        end)
-    end)
-end)
-
-test("removed graphics page cannot construct controls and repaired paging stays off", function()
-    UI.withAddon(function(M, state)
-        eq(MurgleDB.interface.holdActionPages, false)
-        eq(M.ModifierPaging.IsActive(), false)
-        eq(M.NativeOptions.Read("HDROutput"), nil)
-        eq(M.NativeOptions.Read("groundEffectDensity"), nil)
-        M.Settings.Show()
-        local count = #state.frames
-        M.Settings.SelectCategory("Graphics")
-        eq(#state.frames, count)
-        M.Settings.SelectCategory("ActionPaging")
-        assert(#state.frames > count)
-        M.Settings.SelectCategory("Items")
-        M.Settings.SelectCategory("Interface")
-        for _, f in ipairs(state.frames) do
-            assert(f.kind ~= "EditBox", "removed graphics inputs must not survive page changes")
-            eq(f.events.CVAR_UPDATE, nil)
-        end
-    end)
-end)
-
-test("paging checkbox reads and writes the same setting despite old saved paging flags", function()
-    UI.withAddon(function(M, state)
-        local applied = {}
-        M.ModifierPaging.Available = function()
-            return true
-        end
-        M.ModifierPaging.ApplyAll = function()
-            applied[#applied + 1] = MurgleDB.interface.holdActionPages
-        end
-        MurgleDB.interface.modifierPaging = true
-        MurgleDB.interface.holdActionPages = false
-        M.Settings.Show()
-        M.Settings.SelectCategory("ActionPaging")
-        local toggle
-        for _, f in ipairs(state.frames) do
-            if f.kind == "CheckButton" and f.caption and f.caption.text == M.L.MODIFIER_PAGING then
-                toggle = f
-            end
-        end
-        assert(toggle)
-        eq(toggle:GetChecked(), false, "old saved flag must not determine the checkbox")
-        toggle:SetChecked(true)
-        toggle.scripts.OnClick(toggle)
-        eq(MurgleDB.interface.holdActionPages, true)
-        eq(toggle:GetChecked(), true)
-        eq(applied[1], true)
-        M.Settings.SelectCategory("Items")
-        M.Settings.SelectCategory("ActionPaging")
-        eq(toggle:GetChecked(), true)
-        toggle:SetChecked(false)
-        toggle.scripts.OnClick(toggle)
-        eq(MurgleDB.interface.holdActionPages, false)
-        eq(toggle:GetChecked(), false)
-        eq(applied[2], false)
-        eq(MurgleDB.interface.modifierPaging, true, "legacy flag must remain irrelevant")
-    end)
-end)
-
-test("enabled paging can always be switched off if native availability changes", function()
-    UI.withAddon(function(M, state)
+test("native controls keep enabled paging disableable and honour dependencies", function()
+    UI.withAddon(function(M, s)
         M.ModifierPaging.Available = function()
             return false
         end
-        M.ModifierPaging.ApplyAll = function() end
-        MurgleDB.interface.modifierPaging = nil
+        local control = s:control("interface", "holdActionPages")
+        eq(control:IsEnabled(), false)
         MurgleDB.interface.holdActionPages = true
-        M.Settings.Show()
-        M.Settings.SelectCategory("ActionPaging")
-        local toggle
-        for _, f in ipairs(state.frames) do
-            if f.kind == "CheckButton" and f.caption and f.caption.text == M.L.MODIFIER_PAGING then
-                toggle = f
-            end
-        end
-        assert(toggle)
-        eq(toggle:GetChecked(), true)
-        eq(toggle.mouse, true, "enable state must permit cleanup even if native frames became unavailable")
-        toggle:SetChecked(false)
-        toggle.scripts.OnClick(toggle)
+        eq(control:IsEnabled(), true)
+        s:setting("interface", "holdActionPages"):SetValue(false)
         eq(MurgleDB.interface.holdActionPages, false)
-        eq(toggle:GetChecked(), false)
+        eq(s:control("lootVendors", "guildRepair"):IsEnabled(), false)
+        s:setting("lootVendors", "autoRepair"):SetValue(true)
+        eq(s:control("lootVendors", "guildRepair"):IsEnabled(), true)
     end)
 end)
 
-test("Items page omits unsafe container opening and retains quest starter control", function()
-    UI.withAddon(function(M, state)
-        MurgleDB.lootVendors.openClams = true
-        M.Settings.Show()
-        M.Settings.SelectCategory("Items")
-        eq(MurgleDB.automation.useQuestStarters, false)
-        local starter
-        for _, frame in ipairs(state.frames) do
-            if frame.caption then
-                assert(frame.caption.text ~= "Automatically open containers")
-                if frame.caption.text == M.L.USE_QUEST_STARTERS then
-                    starter = frame
+test("native setters preserve combat deferral and reset restoration", function()
+    local menu = H.newVisibilityFrame(true)
+    UI.withAddon(function(M, s)
+        s.combat = true
+        s:setting("interface", "hideMicroMenu"):SetValue(true)
+        eq(menu.shown, true)
+        assert(M.GetDeferredCount() > 0)
+        s.combat = false
+        s.frames[1].scripts.OnEvent(s.frames[1], "PLAYER_REGEN_ENABLED")
+        eq(menu.shown, false)
+        M.ResetDB()
+        eq(menu.shown, true)
+    end, function()
+        MicroMenu = menu
+    end)
+end)
+
+test("late native Settings availability registers once and unregisters load listener", function()
+    local saved
+    UI.withAddon(function(M, s)
+        eq(#s.categories, 0)
+        Settings = saved
+        local listener
+        for _, f in ipairs(s.frames) do
+            if f.events.ADDON_LOADED then
+                listener = f
+            end
+        end
+        assert(listener)
+        listener.scripts.OnEvent(listener, "ADDON_LOADED", "Blizzard_Settings")
+        eq(#s.categories, 6)
+        eq(next(listener.events), nil)
+        M.Settings.Initialize()
+        eq(#s.categories, 6)
+    end, function()
+        saved = Settings
+        Settings = false
+    end)
+end)
+
+test("native quest level preference is not reset with addon defaults", function()
+    UI.withAddon(function(M, s)
+        local value = "1"
+        M.NativeOptions.Read = function()
+            return value, true
+        end
+        M.NativeOptions.Set = function(_, v)
+            value = v
+        end
+        local setting = s:setting("native", "showQuestLevel")
+        eq(setting:GetValue(), true)
+        setting:SetValueToDefault()
+        eq(value, "1")
+        M.ResetDB()
+        eq(value, "1")
+    end)
+end)
+
+test("native dependent controls subscribe to their parent setting", function()
+    UI.withAddon(function(_, s)
+        local guild = s:control("lootVendors", "guildRepair")
+        assert(guild.parent and guild.parent.setting == s:setting("lootVendors", "autoRepair"))
+        local border = s:control("minimap", "hideBorder")
+        assert(border.parent and border.parent.setting == s:setting("minimap", "square"))
+    end)
+end)
+
+test("native Defaults clears saved child choices even when parent is disabled", function()
+    UI.withAddon(function(_, s)
+        s:setting("lootVendors", "autoRepair"):SetValue(true)
+        s:setting("lootVendors", "guildRepair"):SetValue(true)
+        s:setting("lootVendors", "autoRepair"):SetValue(false)
+        s:setting("lootVendors", "guildRepair"):SetValueToDefault()
+        eq(MurgleDB.lootVendors.guildRepair, false)
+    end)
+end)
+
+test("every native dropdown option has a label and a value matching its setting type", function()
+    UI.withAddon(function(_, s)
+        for _, control in ipairs(s.controls) do
+            if control.kind == "dropdown" then
+                for _, option in ipairs(control.options()) do
+                    eq(type(option.label), "string")
+                    assert(option.label ~= "")
+                    eq(type(option.value), control.setting.kind)
                 end
             end
         end
-        assert(starter)
-        starter:SetChecked(true)
-        starter.scripts.OnClick(starter)
-        eq(MurgleDB.automation.useQuestStarters, true)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(MurgleDB.automation.useQuestStarters, false)
+    end)
+end)
+
+test("removed controls and actions stay absent", function()
+    UI.withAddon(function(M, s)
+        for _, variable in ipairs({
+            "Murgle_lootVendors_markedJunk",
+            "Murgle_lootVendors_restock",
+            "Murgle_tooltip_spellDetails",
+            "Murgle_automation_useQuestStarters",
+        }) do
+            eq(s.settings[variable], nil)
+        end
+        for _, control in ipairs(s.controls) do
+            for _, text in ipairs({
+                M.L.MARK_CURSOR_ITEM,
+                M.L.CLEAR_MARKED_ITEMS,
+                M.L.SELL_MARKED,
+                M.L.CLEAR_RESTOCK,
+                M.L.CLICK_CASTING,
+                M.L.MUTE_ALL,
+                M.L.UNMUTE_ALL,
+            }) do
+                assert(control.buttonText ~= text)
+            end
+        end
+    end)
+end)
+
+test("spell queue slider formats the current value in milliseconds", function()
+    UI.withAddon(function(_, s)
+        local options = s:control("interface", "spellQueueWindow").options
+        local formatter = assert(options.formatters and options.formatters[MinimalSliderWithSteppersMixin.Label.Right])
+        eq(formatter(170), "170 ms")
+        eq(formatter(400), "400 ms")
+        eq(formatter(0), "0 ms")
+    end)
+end)
+
+test("native refresh and sound choices retain important consequences in hover help", function()
+    UI.withAddon(function(M, s)
+        local refresh = s:control("automation", "worldRefreshMode")
+        assert(refresh.help:find(M.L.WORLD_REFRESH_HARDCORE_NOTE, 1, true))
+        local tabs = s:control("chat", "tabs")
+        assert(tabs.help:find(M.L.CHAT_TABS_HIDE_NOTE, 1, true))
+        assert(s:control("sound", "muteReadyCheck").help:find(M.L.SOUND_HELP, 1, true))
     end)
 end)

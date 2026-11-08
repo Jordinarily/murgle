@@ -53,28 +53,6 @@ test("tracker out of combat mode retains its existing transitions", function()
     end, fixture)
 end)
 
-test("retired tracker combat choice migrates to native visibility without listeners", function()
-    UI.withAddon(function(M, state)
-        eq(MurgleDB.interface.objectiveTrackerVisibility, "always")
-        eq(ObjectiveTrackerFrame.shown, true)
-        eq(state.hooks, 0)
-        eq(#state.frames, 1)
-        MurgleDB.interface.objectiveTrackerVisibility = "combat"
-        M.Interface.ApplyTrackerVisibility()
-        eq(ObjectiveTrackerFrame.shown, true)
-        eq(state.hooks, 0)
-        M.Settings.Show()
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                assert(region.text ~= M.L.COMBAT, "retired tracker Combat control is still present")
-            end
-        end
-    end, function(M, state)
-        fixture(M, state)
-        MurgleDB = { interface = { objectiveTrackerVisibility = "combat" } }
-    end)
-end)
-
 test("tracker refuses protected roots and invalid modes release ownership", function()
     UI.withAddon(function(M, state)
         ObjectiveTrackerFrame.protected = true

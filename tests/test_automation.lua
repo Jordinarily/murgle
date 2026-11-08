@@ -215,43 +215,6 @@ test("quest automation missing APIs skip actions and explicit settings retry abs
     end, fixture)
 end)
 
-test("saved quest settings initialize and settings reset disables native hook actions", function()
-    UI.withAddon(function(M, state)
-        eq(state.hooks, 1)
-        state.fire("QUEST_DETAIL", 0)
-        eq(state.accepted, 1)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Automation")
-        local controls = {}
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if region.text == M.L.AUTO_QUEST then
-                    controls.accept = frame
-                end
-                if region.text == M.L.AUTO_TURN_IN then
-                    controls.turnIn = frame
-                end
-            end
-        end
-        assert(controls.accept and controls.turnIn, "quest automation controls available")
-        controls.turnIn:SetChecked(true)
-        controls.turnIn.scripts.OnClick(controls.turnIn)
-        eq(MurgleDB.automation.autoTurnIn, true)
-        state.fire("QUEST_COMPLETE")
-        eq(state.rewarded, 1)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(controls.accept:GetChecked(), false)
-        eq(controls.turnIn:GetChecked(), false)
-        state.fire("QUEST_FINISHED")
-        state.fire("QUEST_DETAIL", 0)
-        eq(state.accepted, 1)
-    end, function(M, state)
-        fixture(M, state)
-        MurgleDB = { automation = { autoQuest = true } }
-    end)
-end)
-
 local H = dofile("tests/helpers.lua")
 local function withGreetings(fn)
     H.withGlobals({
@@ -378,4 +341,24 @@ test("a single completed quest remains unambiguous beside incomplete active ques
         state.fire("QUEST_GREETING")
         eq(state.selected, 2)
     end)
+end)
+
+test("native quest controls enable actual actions and reset stops them", function()
+    UI.withAddon(function(M, state)
+        local accept = state:setting("automation", "autoQuest")
+        local turnIn = state:setting("automation", "autoTurnIn")
+        accept:SetValue(true)
+        state.fire("QUEST_DETAIL", 0)
+        eq(state.accepted, 1)
+        turnIn:SetValue(true)
+        state.fire("QUEST_COMPLETE")
+        eq(state.rewarded, 1)
+        M.Settings.ConfirmReset()
+        StaticPopupDialogs.MURGLE_RESET.OnAccept()
+        eq(accept:GetValue(), false)
+        eq(turnIn:GetValue(), false)
+        state.fire("QUEST_FINISHED")
+        state.fire("QUEST_DETAIL", 0)
+        eq(state.accepted, 1)
+    end, fixture)
 end)

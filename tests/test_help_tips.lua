@@ -76,26 +76,3 @@ test("saved help tip preference survives reload and reset restores prior value",
         MurgleDB = { interface = { blockHelpTips = true, helpTipsRestore = "0" } }
     end)
 end)
-
-test("help tip checkbox persists and reset refreshes its cached state", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local control
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if M.L.BLOCK_HELP_TIPS and region.text == M.L.BLOCK_HELP_TIPS then
-                    control = frame
-                end
-            end
-        end
-        assert(control, "Block new help tips checkbox is available")
-        control:SetChecked(true)
-        control.scripts.OnClick(control)
-        eq(MurgleDB.interface.blockHelpTips, true)
-        eq(HelpTip:AreHelpTipsEnabled(), false)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(control:GetChecked(), false)
-        eq(HelpTip:AreHelpTipsEnabled(), true)
-    end, fixture)
-end)

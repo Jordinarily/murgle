@@ -95,49 +95,6 @@ test("disabled minimap options neither touch frames nor queue work in combat", f
     end)
 end)
 
-test("minimap settings save to the correct category and reset supersedes combat requests", function()
-    UI.withAddon(function(M, state)
-        fixtures()
-        M.Settings.Show()
-        local start = #state.frames
-        M.Settings.SelectCategory("Minimap")
-        local controls = {}
-        for i = start + 1, #state.frames do
-            local f = state.frames[i]
-            if f.kind == "CheckButton" then
-                controls[#controls + 1] = f
-            end
-        end
-        eq(#controls, 10)
-        state.combat = true
-        for _, control in ipairs(controls) do
-            control:SetChecked(true)
-            control.scripts.OnClick(control)
-        end
-        eq(MurgleDB.minimap.square, true)
-        eq(MurgleDB.minimap.hideBorder, true)
-        eq(MurgleDB.minimap.hideCalendar, true)
-        eq(MurgleDB.minimap.hideClock, true)
-        eq(MurgleDB.minimap.hideTracking, true)
-        eq(MurgleDB.minimap.hideZoneText, true)
-        eq(MurgleDB.minimap.hideZoomButtons, true)
-        eq(MurgleDB.interface.hideCalendar, nil)
-        eq(GameTimeFrame.changes, 0)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        state.combat = false
-        local core = state.frames[1]
-        core.scripts.OnEvent(core, "PLAYER_REGEN_ENABLED")
-        eq(GameTimeFrame.changes, 0)
-        eq(Minimap.ZoomIn.changes, 0)
-        eq(M.GetDeferredCount(), 0)
-        eq(next(core.events), nil)
-        for _, control in ipairs(controls) do
-            eq(control:GetChecked(), false)
-        end
-    end)
-end)
-
 test("missing minimap children retry safely when native frames become available", function()
     UI.withAddon(function(M)
         assert(M.Minimap, "minimap module must be loaded")
@@ -155,61 +112,6 @@ test("missing minimap children retry safely when native frames become available"
         M.ResetDB()
         eq(Minimap.ZoomIn.shown, true)
         eq(MinimapCluster.ZoneTextButton.shown, true)
-    end)
-end)
-
-test("each minimap checkbox hides its own target and restores it on disable", function()
-    UI.withAddon(function(M, state)
-        fixtures()
-        compartmentFixture(M, state)
-        AddonCompartmentFrame.count = 1
-        AddonCompartmentFrame:UpdateDisplay()
-        MinimapCompassTexture = { alpha = 1 }
-        function MinimapCompassTexture:GetAlpha()
-            return self.alpha
-        end
-        function MinimapCompassTexture:SetAlpha(value)
-            self.alpha = value
-        end
-        MinimapCluster.BorderTop = frame(true)
-        MinimapCluster.DielFrame = dofile("tests/helpers.lua").newVisibilityFrame(true)
-        TimeManagerClockButton.shown = true
-        Minimap.ZoomOut.shown = true
-        M.Settings.Show()
-        local start = #state.frames
-        M.Settings.SelectCategory("Minimap")
-        local targets = {
-            [M.L.HIDE_MINIMAP_ZONE] = MinimapCluster.ZoneTextButton,
-            [M.L.HIDE_CLOCK] = TimeManagerClockButton,
-            [M.L.HIDE_MINIMAP_HEADER] = MinimapCluster.BorderTop,
-            [M.L.HIDE_CALENDAR] = GameTimeFrame,
-            [M.L.HIDE_TRACKING] = MinimapCluster.Tracking.Button,
-            [M.L.HIDE_ZOOM_BUTTONS] = Minimap.ZoomIn,
-            [M.L.HIDE_ADDON_COMPARTMENT] = AddonCompartmentFrame,
-            [M.L.HIDE_MINIMAP_BORDER] = MinimapCompassTexture,
-            [M.L.HIDE_DAY_NIGHT] = MinimapCluster.DielFrame,
-        }
-        for i = start + 1, #state.frames do
-            local control = state.frames[i]
-            if control.kind == "CheckButton" then
-                local target, square
-                for _, region in ipairs(control.regions) do
-                    target = target or targets[region.text]
-                    square = square or region.text == M.L.SQUARE_MINIMAP
-                end
-                assert(target or square)
-                if target then
-                    control:SetChecked(true)
-                    control.scripts.OnClick(control)
-                    eq(target.alpha or target.shown, target.alpha and 0 or false)
-                    control:SetChecked(false)
-                    control.scripts.OnClick(control)
-                    eq(target.alpha or target.shown, target.alpha and 1 or true)
-                end
-            end
-        end
-        eq(Minimap.ZoomOut.changes, 2)
-        eq(Minimap.ZoomOut.shown, true)
     end)
 end)
 
@@ -402,32 +304,6 @@ test("square minimap skips missing or protected integrations without blocking la
     end, maskFixture)
 end)
 
-test("saved square minimap applies during startup without opening settings", function()
-    UI.withAddon(function(M, state)
-        eq(Minimap.mask, "Interface\\BUTTONS\\WHITE8X8")
-        eq(#state.frames, 1)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Minimap")
-        local square
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions or {}) do
-                if region.text == M.L.SQUARE_MINIMAP then
-                    square = frame
-                end
-            end
-        end
-        assert(square)
-        eq(square:GetChecked(), true)
-        square:SetChecked(false)
-        square.scripts.OnClick(square)
-        eq(MurgleDB.minimap.square, false)
-        eq(Minimap.mask, "ui-hud-minimap-frame-generic-mask")
-    end, function(M, state)
-        maskFixture(M, state)
-        MurgleDB = { minimap = { square = true } }
-    end)
-end)
-
 test("owned square mask defers restoration and cancels it when reenabled during combat", function()
     UI.withAddon(function(M, state)
         local map = Minimap
@@ -495,29 +371,6 @@ test("day night indicator skips unsafe frames and uses latest combat choice", fu
         eq(indicator.changes, 1)
         M.ResetDB()
         eq(indicator.shown, false)
-    end)
-end)
-
-test("day night checkbox persists and reset restores saved startup visibility", function()
-    UI.withAddon(function(M, state)
-        eq(MinimapCluster.DielFrame.shown, false)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Minimap")
-        local control
-        for _, widget in ipairs(state.frames) do
-            if widget.kind == "CheckButton" and widget:GetChecked() == true then
-                control = widget
-            end
-        end
-        assert(control, "saved indicator choice must have a checked control")
-        control:SetChecked(false)
-        control.scripts.OnClick(control)
-        eq(MurgleDB.minimap.hideDayNight, false)
-        eq(MinimapCluster.DielFrame.shown, true)
-    end, function(M)
-        local H = dofile("tests/helpers.lua")
-        MinimapCluster = { DielFrame = H.newVisibilityFrame(true) }
-        MurgleDB = M.ApplyDefaults({ minimap = { hideDayNight = true } })
     end)
 end)
 
@@ -676,38 +529,6 @@ test("square minimap suppresses and restores native blob ring textures", functio
         eq(calls.SetTaskBlobRingScalar, 1)
         eq(calls.SetTaskBlobRingAlpha, 1)
     end, maskFixture)
-end)
-
-test("square minimap hides rim control without changing its saved preference", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Minimap")
-        local rim, square
-        for _, control in ipairs(state.frames) do
-            if control.kind == "CheckButton" then
-                for _, region in ipairs(control.regions) do
-                    if region.text == M.L.HIDE_MINIMAP_BORDER then
-                        rim = control
-                    elseif region.text == M.L.SQUARE_MINIMAP then
-                        square = control
-                    end
-                end
-            end
-        end
-        assert(rim and square)
-        rim:SetChecked(true)
-        rim.scripts.OnClick(rim)
-        eq(rim:IsShown(), true)
-        square:SetChecked(true)
-        square.scripts.OnClick(square)
-        eq(rim:IsShown(), false)
-        eq(MurgleDB.minimap.hideBorder, true)
-        square:SetChecked(false)
-        square.scripts.OnClick(square)
-        eq(rim:IsShown(), true)
-        eq(rim:GetChecked(), true)
-        eq(MurgleDB.minimap.hideBorder, true)
-    end)
 end)
 
 test("retired quest circle preference is inert and square still restores its rings", function()

@@ -193,31 +193,6 @@ test("chat Hide fails closed for protected missing or actively dragged tabs", fu
     end, fixture)
 end)
 
-test("chat Hide choice replaces idle fading and reset restores native tabs", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Chat")
-        local hide, fade
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if region.text == M.L.CHAT_HIDE then
-                    hide = frame
-                elseif region.text == M.L.CHAT_FADE then
-                    fade = frame
-                end
-            end
-        end
-        assert(hide, "Hide choice exists")
-        fade.scripts.OnClick(fade)
-        hide.scripts.OnClick(hide)
-        eq(MurgleDB.chat.tabs, "hide")
-        eq(ChatFrame1Tab.shown, false)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(ChatFrame1Tab.shown, true)
-    end, fixture)
-end)
-
 test("chat Hide waits for native drag completion without polling", function()
     UI.withAddon(function(M, state)
         MOVING_CHATFRAME = ChatFrame1
@@ -320,28 +295,6 @@ test("chat tabs skip protected and missing integrations and invalid mode restore
         mode(M, "invalid")
         eq(ChatFrame1Tab.idle, 0.2)
         eq(next(state.frames[1].events), nil)
-    end, fixture)
-end)
-
-test("chat mouseover setting persists and confirmed reset refreshes control", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Chat")
-        local control
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if region.text == M.L.CHAT_FADE then
-                    control = frame
-                end
-            end
-        end
-        assert(control, "Fade choice exists")
-        control.scripts.OnClick(control)
-        eq(MurgleDB.chat.tabs, "mouseover")
-        eq(ChatFrame1Tab.idle, 0)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(ChatFrame1Tab.idle, 0.2)
     end, fixture)
 end)
 

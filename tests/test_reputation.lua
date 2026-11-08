@@ -204,29 +204,6 @@ test("reputation skips already watched faction and suppresses synchronous reentr
     end, true)
 end)
 
-test("reputation menu applies immediately and unavailable APIs disable its control", function()
-    withReputation(function(M, state, fire, _, ui)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Quests")
-        local control
-        for _, frame in ipairs(ui.frames) do
-            for _, region in ipairs(frame.regions) do
-                if frame.kind == "CheckButton" and region.text == M.L.AUTO_WATCH_REPUTATION then
-                    control = frame
-                end
-            end
-        end
-        assert(control, "auto-watch checkbox")
-        control:SetChecked(true)
-        control.scripts.OnClick(control)
-        fire("Reputation with Stormwind increased by 1.")
-        eq(state.watched[1], 72)
-        C_Reputation.SetWatchedFactionByID = nil
-        M.Settings.SelectCategory("Quests")
-        eq(control.mouse, false)
-    end)
-end)
-
 test("reputation does not change watch when native header restoration silently fails", function()
     withReputation(function(_, state, fire)
         C_Reputation.CollapseFactionHeader = function() end

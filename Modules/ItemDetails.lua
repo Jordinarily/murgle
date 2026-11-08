@@ -1,7 +1,7 @@
 local _, Murgle = ...
 local ItemDetails = {}
 Murgle.ItemDetails = ItemDetails
-local itemInstalled, spellInstalled = false, false
+local itemInstalled = false
 
 local function addUnique(tooltip, text)
     local name = tooltip:GetName()
@@ -17,9 +17,9 @@ local function addUnique(tooltip, text)
     tooltip:AddLine(text, 0.65, 0.75, 0.85)
 end
 
-local function augment(tooltip, data, spell)
+local function augment(tooltip, data)
     if
-        MurgleDB.tooltip[spell and "spellDetails" or "itemDetails"] ~= true
+        MurgleDB.tooltip.itemDetails ~= true
         or tooltip ~= GameTooltip
         or type(data) ~= "table"
         or type(data.id) ~= "number"
@@ -29,10 +29,6 @@ local function augment(tooltip, data, spell)
         or type(tooltip.NumLines) ~= "function"
         or type(tooltip.AddLine) ~= "function"
     then
-        return
-    end
-    if spell then
-        addUnique(tooltip, string.format(Murgle.L.SPELL_ID_LINE, data.id))
         return
     end
     addUnique(tooltip, string.format(Murgle.L.ITEM_ID_LINE, data.id))
@@ -53,12 +49,8 @@ local function augment(tooltip, data, spell)
     end
 end
 
-local function augmentSpell(tooltip, data)
-    augment(tooltip, data, true)
-end
-
 function ItemDetails.ApplyAll()
-    if MurgleDB.tooltip.itemDetails ~= true and MurgleDB.tooltip.spellDetails ~= true then
+    if MurgleDB.tooltip.itemDetails ~= true then
         return
     end
     if
@@ -75,14 +67,6 @@ function ItemDetails.ApplyAll()
         then
             TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, augment)
             itemInstalled = true
-        end
-        if
-            MurgleDB.tooltip.spellDetails == true
-            and not spellInstalled
-            and type(Enum.TooltipDataType.Spell) == "number"
-        then
-            TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Spell, augmentSpell)
-            spellInstalled = true
         end
     end
 end

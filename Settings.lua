@@ -3,982 +3,394 @@ local L = Murgle.L
 local Settings = {}
 Murgle.Settings = Settings
 
--- Fixed palette; applied only at lazy creation and explicit control refresh.
-local COLORS = {
-    background = { 16 / 255, 19 / 255, 24 / 255, 1 },
-    panel = { 21 / 255, 26 / 255, 33 / 255, 1 },
-    button = { 28 / 255, 34 / 255, 43 / 255, 1 },
-    selected = { 37 / 255, 45 / 255, 56 / 255, 1 },
-    border = { 52 / 255, 61 / 255, 73 / 255, 1 },
-    text = { 229 / 255, 233 / 255, 240 / 255 },
-    secondary = { 181 / 255, 189 / 255, 201 / 255 },
-    muted = { 115 / 255, 125 / 255, 140 / 255 },
-    accent = { 111 / 255, 143 / 255, 174 / 255 },
-    hover = { 120 / 255, 154 / 255, 184 / 255, 0.08 },
+-- Forever eac30af: Blizzard_Settings_Shared/{Blizzard_Settings,
+-- Blizzard_Setting,Blizzard_SettingControls,Blizzard_SettingsInbound}.lua.
+-- These register native list initializers; Blizzard creates visible controls.
+local native, root, loading
+local variables, initializers, parents = {}, {}, {}
+local function defaulting()
+    return SettingsPanel
+        and type(SettingsPanel.CheckIsSettingDefaults) == "function"
+        and SettingsPanel:CheckIsSettingDefaults() == true
+end
+local function condition(initializer, predicate)
+    if not predicate then
+        return
+    end
+    local parent = parents[predicate]
+    if parent and initializers[parent] then
+        initializer:SetParentInitializer(initializers[parent], predicate)
+    else
+        initializer:AddModifyPredicate(predicate)
+    end
+end
+local required = {
+    "RegisterVerticalLayoutCategory",
+    "RegisterVerticalLayoutSubcategory",
+    "RegisterAddOnCategory",
+    "RegisterProxySetting",
+    "CreateCheckbox",
+    "CreateDropdown",
+    "CreateSlider",
+    "CreateSliderOptions",
+    "CreateControlTextContainer",
+    "OpenToCategory",
+    "NotifyUpdate",
 }
-
-local window, content
-
-local selected = "Interface"
-local pages, navigation = {}, {}
-
-local function label(parent, text, size)
-    local font = parent:CreateFontString(nil, "OVERLAY")
-    font:SetFont(STANDARD_TEXT_FONT, size or 13)
-    font:SetText(text)
-    font:SetTextColor(unpack(COLORS.text))
-    font:SetJustifyH("LEFT")
-    return font
-end
-
-local function button(parent, text, width, onClick)
-    local control = CreateFrame("Button", nil, parent)
-    control:SetSize(width, 30)
-    local background = control:CreateTexture(nil, "BACKGROUND")
-    background:SetAllPoints(control)
-    background:SetColorTexture(unpack(COLORS.button))
-    local highlight = control:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAllPoints(control)
-    highlight:SetColorTexture(unpack(COLORS.hover))
-    control:SetHighlightTexture(highlight)
-    local textRegion = label(control, text)
-    textRegion:SetPoint("CENTER")
-    textRegion.background = background
-    control:SetScript("OnClick", function(self, ...)
-        onClick(self, ...)
-    end)
-    return control, textRegion
-end
-
--- Reuse Spell Queue's native tooltip behavior for short, optional help.
-local function helpButton(page, text, caption)
-    local help = button(page, "?", 20, function() end)
-    help:SetSize(20, 20)
-    help:SetPoint("LEFT", caption, "RIGHT", 4, 0)
-    help:SetScript("OnEnter", function(self)
-        if GameTooltip and type(GameTooltip.SetOwner) == "function" and type(GameTooltip.SetText) == "function" then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(type(text) == "function" and text() or text, 1, 1, 1, 1, true)
-            GameTooltip:Show()
-        end
-    end)
-    help:SetScript("OnLeave", function(self)
-        if GameTooltip and type(GameTooltip.GetOwner) == "function" and GameTooltip:GetOwner() == self then
-            GameTooltip:Hide()
-        end
-    end)
-    return help
-end
-
-local function setSelected(caption, active)
-    caption:SetTextColor(unpack(active and COLORS.accent or COLORS.text))
-    caption.background:SetColorTexture(unpack(active and COLORS.selected or COLORS.button))
-end
-
-local function newPage(title)
-    local page = CreateFrame("Frame", nil, content)
-    page:SetSize(420, 325)
-    page:SetPoint("TOPLEFT")
-    local heading = label(page, title, 18)
-    heading:SetPoint("TOPLEFT", 0, 0)
-    return page
-end
-
-local function checkbox(page, text, key, row, apply, category)
-    local control = CreateFrame("CheckButton", nil, page)
-    control:SetSize(22, 22)
-    control:SetPoint("TOPLEFT", 0, -36 - (row - 1) * 36)
-    local background = control:CreateTexture(nil, "BACKGROUND")
-    background:SetAllPoints(control)
-    background:SetColorTexture(unpack(COLORS.border))
-    local checked = control:CreateTexture(nil, "ARTWORK")
-    checked:SetPoint("TOPLEFT", 4, -4)
-    checked:SetPoint("BOTTOMRIGHT", -4, 4)
-    checked:SetColorTexture(unpack(COLORS.accent))
-    control:SetCheckedTexture(checked)
-    local caption = label(control, text)
-    caption:SetPoint("LEFT", control, "RIGHT", 8, 0)
-    control.caption = caption
-    control:SetScript("OnClick", function(self)
-        MurgleDB[category or "interface"][key] = self:GetChecked() == true
-        apply()
-        if page.Refresh then
-            page:Refresh()
-        end
-    end)
-    category = category or "interface"
-    if type(Murgle.DEFAULTS[category][key]) == "boolean" then
-        page.toggles = page.toggles or {}
-        page.toggles[#page.toggles + 1] = { category = category, key = key, apply = apply }
+local function available()
+    local api = _G.Settings
+    if type(api) ~= "table" then
+        return false
     end
-    return control
-end
-
-local function interfacePage()
-    local page = newPage(L.CATEGORY_INTERFACE)
-    local menu = checkbox(page, L.HIDE_MICRO_MENU, "hideMicroMenu", 1, function()
-        Murgle.Interface.ApplyMicroMenu()
-    end)
-    local bags = checkbox(page, L.HIDE_BAG_BAR, "hideBagBar", 2, function()
-        Murgle.Interface.ApplyBagBar()
-    end)
-    local tracker = checkbox(page, L.TRACKER_HEADERS, "objectiveTrackerHeaders", 3, function()
-        Murgle.Interface.ApplyTrackerHeaders()
-    end)
-    local zone = checkbox(page, L.HIDE_ZONE_TEXT, "hideZoneText", 4, function()
-        Murgle.Interface.ApplyZoneText()
-    end)
-    local boss = checkbox(page, L.HIDE_BOSS_BANNER, "hideBossBanner", 5, function()
-        Murgle.Interface.ApplyBossBanner()
-    end)
-    local talking = checkbox(page, L.HIDE_TALKING_HEAD, "hideTalkingHead", 6, function()
-        Murgle.Interface.ApplyTalkingHead()
-    end)
-    local totems = checkbox(page, L.HIDE_TOTEM_TIMERS, "hideTotemTimers", 7, Murgle.Interface.ApplyTotemTimers)
-    local helpTips = checkbox(page, L.BLOCK_HELP_TIPS, "blockHelpTips", 7, Murgle.Interface.ApplyHelpTips)
-    for row, control in ipairs({ menu, bags, tracker, zone, boss, talking, helpTips }) do
-        control:SetPoint("TOPLEFT", 0, -36 - (row - 1) * 22)
+    for _, key in ipairs(required) do
+        if type(api[key]) ~= "function" then
+            return false
+        end
     end
-    totems:SetPoint("TOPLEFT", 215, -146)
-    local lootToasts = checkbox(page, L.BLOCK_LOOT_TOASTS, "blockLootToasts", 7, Murgle.Interface.ApplyLootToasts)
-    lootToasts:SetPoint("TOPLEFT", 215, -168)
-    local xp = checkbox(page, L.HIDE_XP, "hideXP", 8, Murgle.Interface.ApplyXP)
-    xp:SetPoint("TOPLEFT", 0, -198)
-    local buffHover = checkbox(page, L.BUFF_TRIANGLE_HOVER, "buffTriangleMouseover", 1, Murgle.Buffs.ApplyAll)
-    buffHover:SetPoint("TOPLEFT", 215, -36)
-    local macros = checkbox(page, L.HIDE_MACRO_NAMES, "hideMacroNames", 1, Murgle.Interface.ApplyMacroNames)
-    macros:SetPoint("TOPLEFT", 215, -58)
-    local actionBars = checkbox(page, L.FADE_ACTION_BARS, "fadeActionBars", 1, Murgle.Interface.ApplyActionBarFade)
-    actionBars:SetPoint("TOPLEFT", 215, -80)
-    helpButton(actionBars, L.FADE_ACTION_BARS_HELP, actionBars.caption)
-    local opacityButtons = {}
-    for index, opacity in ipairs({ 0, 25, 50, 75 }) do
-        local control, caption = button(page, opacity .. "%", 42, function()
-            MurgleDB.interface.actionBarCombatOpacity = opacity
-            Murgle.Interface.ApplyActionBarFade()
-            page:Refresh()
+    return type(CreateSettingsListSectionHeaderInitializer) == "function"
+        and type(CreateSettingsButtonInitializer) == "function"
+end
+local function apply(module, method)
+    return function()
+        Murgle[module][method or "ApplyAll"]()
+    end
+end
+local function proxy(category, group, key, kind, name, default, get, set)
+    local variable = "Murgle_" .. group .. "_" .. key
+    local setting = native.RegisterProxySetting(category, variable, kind, name, default, get, set)
+    variables[#variables + 1] = variable
+    return setting
+end
+local function header(layout, name, help)
+    layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(name, help))
+end
+local function action(layout, name, text, fn, help, predicate)
+    local initializer = CreateSettingsButtonInitializer(name, text, function()
+        if not predicate or predicate() then
+            fn()
+            Settings.Refresh()
+        end
+    end, help, true)
+    condition(initializer, predicate)
+    layout:AddInitializer(initializer)
+    return initializer
+end
+local function help(group, key)
+    if key == "AUTO_WORLD_REFRESH" then
+        return L.WORLD_REFRESH_SCOPE_NOTE .. "\n" .. L.WORLD_REFRESH_HARDCORE_NOTE
+    elseif key == "CHAT_TABS" then
+        return L.CHAT_TABS_MOUSEOVER_NOTE .. "\n" .. L.CHAT_TABS_HIDE_NOTE
+    elseif group == "sound" then
+        return L.SOUND_HELP
+    end
+    return L[key .. "_HELP"] or L[key]
+end
+local function toggle(category, group, key, labelKey, callback, predicate)
+    local name = L[labelKey]
+    local setting = proxy(category, group, key, "boolean", name, Murgle.DEFAULTS[group][key], function()
+        return MurgleDB[group][key] == true
+    end, function(value)
+        if predicate and not predicate() and not defaulting() then
+            return
+        end
+        MurgleDB[group][key] = value
+        callback()
+    end)
+    local initializer = native.CreateCheckbox(category, setting, help(group, labelKey))
+    condition(initializer, predicate)
+    initializers[group .. "_" .. key] = initializer
+    return initializer
+end
+local function choice(category, group, key, labelKey, choices, callback, predicate)
+    -- trackerFontSize deliberately stores numeric sizes and "default". Native
+    -- Settings is type-strict, so expose a string and convert at this boundary.
+    local default = Murgle.DEFAULTS[group][key]
+    local stringValue = type(default) == "string"
+    local kind = type(default)
+    local setting = proxy(category, group, key, kind, L[labelKey], default, function()
+        local value = MurgleDB[group][key]
+        return stringValue and tostring(value) or value
+    end, function(value)
+        if predicate and not predicate() and not defaulting() then
+            return
+        end
+        for _, item in ipairs(choices) do
+            if value == (stringValue and tostring(item[1]) or item[1]) then
+                MurgleDB[group][key] = item[1]
+                callback()
+                return
+            end
+        end
+    end)
+    local function options()
+        local container = native.CreateControlTextContainer()
+        for _, item in ipairs(choices) do
+            container:Add(stringValue and tostring(item[1]) or item[1], item[2])
+        end
+        return container:GetData()
+    end
+    local initializer = native.CreateDropdown(category, setting, options, help(group, labelKey))
+    condition(initializer, predicate)
+    initializers[group .. "_" .. key] = initializer
+    return initializer
+end
+local function parentEnabled(group, key, expected)
+    if expected == nil then
+        expected = true
+    end
+    local predicate = function()
+        return MurgleDB[group][key] == expected
+    end
+    parents[predicate] = group .. "_" .. key
+    return predicate
+end
+local function buildGeneral(category, layout)
+    header(layout, L.SECTION_GENERAL)
+    for _, item in ipairs({
+        { "hideMicroMenu", "HIDE_MICRO_MENU", "ApplyMicroMenu" },
+        { "hideBagBar", "HIDE_BAG_BAR", "ApplyBagBar" },
+        { "hideXP", "HIDE_XP", "ApplyXP" },
+        { "hideZoneText", "HIDE_ZONE_TEXT", "ApplyZoneText" },
+        { "hideBossBanner", "HIDE_BOSS_BANNER", "ApplyBossBanner" },
+        { "hideTalkingHead", "HIDE_TALKING_HEAD", "ApplyTalkingHead" },
+        { "blockHelpTips", "BLOCK_HELP_TIPS", "ApplyHelpTips" },
+        { "blockLootToasts", "BLOCK_LOOT_TOASTS", "ApplyLootToasts" },
+    }) do
+        toggle(category, "interface", item[1], item[2], apply("Interface", item[3]))
+    end
+    toggle(category, "interface", "buffTriangleMouseover", "BUFF_TRIANGLE_HOVER", apply("Buffs"))
+    toggle(category, "interface", "moveBags", "MOVE_BAGS", apply("Bags"))
+    action(layout, L.MOVE_BAGS, L.RESET_BAG_POSITION, Murgle.Bags.ResetPosition)
+    header(layout, L.CATEGORY_AUTOMATION, L.WORLD_REFRESH_SCOPE_NOTE)
+    toggle(category, "automation", "autoWorldRefresh", "AUTO_WORLD_REFRESH", apply("Automation"))
+    choice(category, "automation", "worldRefreshMode", "AUTO_WORLD_REFRESH", {
+        { "hideOnly", L.WORLD_REFRESH_HIDE_ONLY },
+        { "acceptAndHide", L.WORLD_REFRESH_ACCEPT_HIDE },
+    }, apply("Automation"), parentEnabled("automation", "autoWorldRefresh"))
+    header(layout, L.RESET)
+    action(layout, L.RESET, L.RESET, Settings.ConfirmReset, L.RESET_CONFIRM)
+end
+local function buildCombat(category, layout)
+    header(layout, L.CATEGORY_ACTION_PAGING, L.PAGING_NATIVE_RETURN)
+    local function pagingAvailable()
+        return MurgleDB.interface.holdActionPages == true or Murgle.ModifierPaging.Available() == true
+    end
+    local paging =
+        toggle(category, "interface", "holdActionPages", "MODIFIER_PAGING", apply("ModifierPaging"), pagingAvailable)
+    paging:AddEvaluateStateFrameEvent("PLAYER_REGEN_ENABLED")
+    local pages = { { 0, L.PAGING_OFF } }
+    for page = 1, 6 do
+        pages[#pages + 1] = { page, tostring(page) }
+    end
+    for _, item in ipairs({
+        { "holdShiftPage", "PAGING_SHIFT" },
+        { "holdCtrlPage", "PAGING_CTRL" },
+        { "holdAltPage", "PAGING_ALT" },
+    }) do
+        choice(
+            category,
+            "interface",
+            item[1],
+            item[2],
+            pages,
+            apply("ModifierPaging"),
+            parentEnabled("interface", "holdActionPages")
+        )
+    end
+    toggle(category, "interface", "hideMacroNames", "HIDE_MACRO_NAMES", apply("Interface", "ApplyMacroNames"))
+    toggle(category, "interface", "fadeActionBars", "FADE_ACTION_BARS", apply("Interface", "ApplyActionBarFade"))
+    choice(category, "interface", "actionBarCombatOpacity", "COMBAT_OPACITY", {
+        { 0, "0%" },
+        { 25, "25%" },
+        { 50, "50%" },
+        { 75, "75%" },
+    }, apply("Interface", "ApplyActionBarFade"), parentEnabled("interface", "fadeActionBars"))
+    toggle(category, "automation", "warnLowRank", "WARN_LOW_RANK_LABEL", apply("SpellRanks"))
+    action(layout, L.WARN_LOW_RANK_LABEL, L.CHECK_SPELL_RANKS, Murgle.SpellRanks.Check)
+    header(layout, L.SPELL_QUEUE, L.SPELL_QUEUE_HELP)
+    local function queueAvailable()
+        return Murgle.Interface.GetSpellQueueWindow() ~= nil
+    end
+    local queue = proxy(category, "interface", "spellQueueWindow", "number", L.SPELL_QUEUE, 400, function()
+        return Murgle.Interface.GetSpellQueueWindow() or 400
+    end, Murgle.Interface.SetSpellQueueWindow)
+    local queueOptions = native.CreateSliderOptions(0, 400, 10)
+    queueOptions:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value)
+        return string.format("%d ms", value)
+    end)
+    native.CreateSlider(category, queue, queueOptions, L.SPELL_QUEUE_HELP):AddModifyPredicate(queueAvailable)
+    action(
+        layout,
+        L.SPELL_QUEUE,
+        L.SPELL_QUEUE_AUTO,
+        Murgle.Interface.AutoDetectSpellQueueWindow,
+        L.SPELL_QUEUE_HELP,
+        queueAvailable
+    )
+    header(layout, L.CATEGORY_FRAMES)
+    for _, item in ipairs({
+        { "cleanPlayer", "CLEAN_PLAYER" },
+        { "cleanTarget", "CLEAN_TARGET" },
+        { "cleanTargetOfTarget", "CLEAN_TARGET_OF_TARGET" },
+        { "hidePlayerName", "HIDE_PLAYER_NAME" },
+        { "enemyFactionOnly", "ENEMY_FACTION_ONLY" },
+    }) do
+        toggle(category, "frames", item[1], item[2], apply("Frames"))
+    end
+    local modes = { { "blizzard", L.GAME_SETTINGS }, { "combat", L.COMBAT }, { "hidden", L.HIDDEN } }
+    for _, item in ipairs({ { "enemyNameplates", "ENEMY_NAMEPLATES" }, { "friendlyNameplates", "FRIENDLY_NAMEPLATES" } }) do
+        local key = item[1]
+        choice(category, "frames", key, item[2], modes, apply("Frames"), function()
+            return Murgle.Frames.NativeAvailable(key)
         end)
-        control:SetSize(42, 25)
-        control:SetPoint("TOPLEFT", 215 + (index - 1) * 47, -106)
-        opacityButtons[opacity] = { control = control, caption = caption }
     end
-    local trackerLabel = label(page, L.TRACKER_VISIBILITY)
-    trackerLabel:SetPoint("TOPLEFT", 0, -228)
-    local trackerButtons = {}
-    for index, choice in ipairs({
+    toggle(category, "frames", "friendlyNamesOnly", "FRIENDLY_NAMES_ONLY", apply("Frames"), function()
+        return Murgle.Frames.NativeAvailable("friendlyNamesOnly")
+    end)
+    toggle(category, "interface", "hideTotemTimers", "HIDE_TOTEM_TIMERS", apply("Interface", "ApplyTotemTimers"))
+end
+local function buildMap(category, layout)
+    header(layout, L.CATEGORY_MINIMAP)
+    for _, item in ipairs({
+        { "square", "SQUARE_MINIMAP", "ApplySquare" },
+        { "hideBorder", "HIDE_MINIMAP_BORDER", "ApplyBorder" },
+        { "hideDayNight", "HIDE_DAY_NIGHT", "ApplyDayNight" },
+        { "hideZoneText", "HIDE_MINIMAP_ZONE", "ApplyZoneText" },
+        { "hideClock", "HIDE_CLOCK", "ApplyClock" },
+        { "hideHeader", "HIDE_MINIMAP_HEADER", "ApplyHeader" },
+        { "hideCalendar", "HIDE_CALENDAR", "ApplyCalendar" },
+        { "hideTracking", "HIDE_TRACKING", "ApplyTracking" },
+        { "hideAddonCompartment", "HIDE_ADDON_COMPARTMENT", "ApplyAddonCompartment" },
+        { "hideZoomButtons", "HIDE_ZOOM_BUTTONS", "ApplyZoomButtons" },
+    }) do
+        local predicate
+        if item[1] == "hideBorder" then
+            predicate = parentEnabled("minimap", "square", false)
+        end
+        toggle(category, "minimap", item[1], item[2], apply("Minimap", item[3]), predicate)
+    end
+    header(layout, L.CATEGORY_QUESTS)
+    toggle(
+        category,
+        "interface",
+        "objectiveTrackerHeaders",
+        "TRACKER_HEADERS",
+        apply("Interface", "ApplyTrackerHeaders")
+    )
+    choice(category, "interface", "objectiveTrackerVisibility", "TRACKER_VISIBILITY", {
         { "always", L.ALWAYS },
         { "ooc", L.OUT_OF_COMBAT },
         { "hidden", L.HIDDEN },
-    }) do
-        local mode = choice[1]
-        local control, caption = button(page, choice[2], 98, function()
-            MurgleDB.interface.objectiveTrackerVisibility = mode
-            Murgle.Interface.ApplyTrackerVisibility()
-            page:Refresh()
-        end)
-        control:SetSize(98, 25)
-        control:SetPoint("TOPLEFT", (index - 1) * 104, -249)
-        trackerButtons[mode] = caption
+    }, apply("Interface", "ApplyTrackerVisibility"))
+    choice(category, "interface", "trackerFontSize", "TRACKER_FONT_SIZE", {
+        { "default", L.BLIZZARD_DEFAULT },
+        { 9, "9" },
+        { 10, "10" },
+        { 11, "11" },
+    }, apply("Interface", "ApplyTrackerFontSize"))
+    toggle(category, "quests", "sparkles", "QUEST_SPARKLES", apply("Quests"), function()
+        return Murgle.Quests.SparklesAvailable()
+    end)
+    toggle(category, "quests", "autoWatchReputation", "AUTO_WATCH_REPUTATION", apply("Quests"), function()
+        return Murgle.Quests.ReputationAvailable()
+    end)
+    toggle(category, "quests", "rewardValues", "REWARD_VALUES", apply("Rewards"))
+    toggle(category, "automation", "autoQuest", "AUTO_QUEST", apply("Automation"))
+    toggle(category, "automation", "autoTurnIn", "AUTO_TURN_IN", apply("Automation"))
+    local function levelAvailable()
+        local _, writable = Murgle.NativeOptions.Read("showQuestLevel")
+        return writable == true and InCombatLockdown() == false
     end
-    local fontLabel = label(page, L.TRACKER_FONT_SIZE)
-    fontLabel:SetPoint("TOPLEFT", 0, -282)
-    local fontCaptions = {}
-    for index, choice in ipairs({ { "default", L.BLIZZARD_DEFAULT }, { 9, "9" }, { 10, "10" }, { 11, "11" } }) do
-        local size = choice[1]
-        local control, caption = button(page, choice[2], index == 1 and 126 or 32, function()
-            MurgleDB.interface.trackerFontSize = size
-            Murgle.Interface.ApplyTrackerFontSize()
-            page:Refresh()
-        end)
-        control:SetSize(index == 1 and 126 or 32, 25)
-        control:SetPoint("TOPLEFT", index == 1 and 160 or 290 + (index - 2) * 38, -276)
-        fontCaptions[size] = caption
-    end
-    local moveBags = checkbox(page, L.MOVE_BAGS, "moveBags", 1, Murgle.Bags.ApplyAll)
-    moveBags:SetPoint("TOPLEFT", 0, -310)
-    helpButton(moveBags, L.MOVE_BAGS_HELP, moveBags.caption)
-    local resetBag = button(page, L.RESET_BAG_POSITION, 190, Murgle.Bags.ResetPosition)
-    resetBag:SetSize(190, 25)
-    resetBag:SetPoint("TOPLEFT", 215, -310)
-    helpButton(menu, L.INTERFACE_COMBAT_NOTE, menu.caption)
-    function page:Refresh()
-        moveBags:SetChecked(MurgleDB.interface.moveBags == true)
-        menu:SetChecked(MurgleDB.interface.hideMicroMenu == true)
-        bags:SetChecked(MurgleDB.interface.hideBagBar == true)
-        tracker:SetChecked(MurgleDB.interface.objectiveTrackerHeaders == true)
-        zone:SetChecked(MurgleDB.interface.hideZoneText == true)
-        boss:SetChecked(MurgleDB.interface.hideBossBanner == true)
-        talking:SetChecked(MurgleDB.interface.hideTalkingHead == true)
-        totems:SetChecked(MurgleDB.interface.hideTotemTimers == true)
-        helpTips:SetChecked(MurgleDB.interface.blockHelpTips == true)
-        lootToasts:SetChecked(MurgleDB.interface.blockLootToasts == true)
-        local trackerMode = MurgleDB.interface.objectiveTrackerVisibility
-        if not trackerButtons[trackerMode] then
-            trackerMode = "always"
+    local levels = proxy(category, "native", "showQuestLevel", "boolean", L.SHOW_QUEST_LEVELS, nil, function()
+        return Murgle.NativeOptions.Read("showQuestLevel") == "1"
+    end, function(value)
+        if levelAvailable() then
+            Murgle.NativeOptions.Set("showQuestLevel", value and "1" or "0")
         end
-        for mode, caption in pairs(trackerButtons) do
-            setSelected(caption, mode == trackerMode)
-        end
-        local fontSize = MurgleDB.interface.trackerFontSize
-        if not fontCaptions[fontSize] then
-            fontSize = "default"
-        end
-        for size, caption in pairs(fontCaptions) do
-            setSelected(caption, size == fontSize)
-        end
-        xp:SetChecked(MurgleDB.interface.hideXP == true)
-        macros:SetChecked(MurgleDB.interface.hideMacroNames == true)
-        local fading = MurgleDB.interface.fadeActionBars == true
-        actionBars:SetChecked(fading)
-        for opacity, entry in pairs(opacityButtons) do
-            if fading then
-                entry.control:Show()
-            else
-                entry.control:Hide()
-            end
-            setSelected(entry.caption, opacity == MurgleDB.interface.actionBarCombatOpacity)
-        end
-        buffHover:SetChecked(MurgleDB.interface.buffTriangleMouseover == true)
-    end
-    return page
+    end)
+    local initializer = native.CreateCheckbox(category, levels, L.SHOW_QUEST_LEVELS_HELP)
+    initializer:AddModifyPredicate(levelAvailable)
+    initializer:AddEvaluateStateFrameEvent("PLAYER_REGEN_DISABLED")
+    initializer:AddEvaluateStateFrameEvent("PLAYER_REGEN_ENABLED")
 end
-
-local function minimapPage()
-    local page = newPage(L.CATEGORY_MINIMAP)
-    local zone = checkbox(page, L.HIDE_MINIMAP_ZONE, "hideZoneText", 1, Murgle.Minimap.ApplyZoneText, "minimap")
-    local clock = checkbox(page, L.HIDE_CLOCK, "hideClock", 2, Murgle.Minimap.ApplyClock, "minimap")
-    local calendar = checkbox(page, L.HIDE_CALENDAR, "hideCalendar", 3, Murgle.Minimap.ApplyCalendar, "minimap")
-    local tracking = checkbox(page, L.HIDE_TRACKING, "hideTracking", 4, Murgle.Minimap.ApplyTracking, "minimap")
-    local zoom = checkbox(page, L.HIDE_ZOOM_BUTTONS, "hideZoomButtons", 5, Murgle.Minimap.ApplyZoomButtons, "minimap")
-    local compartment = checkbox(
-        page,
-        L.HIDE_ADDON_COMPARTMENT,
-        "hideAddonCompartment",
-        6,
-        Murgle.Minimap.ApplyAddonCompartment,
-        "minimap"
+local function buildItems(category, layout)
+    header(layout, L.CATEGORY_ITEMS)
+    toggle(category, "lootVendors", "fastLoot", "FAST_LOOT", apply("LootVendors"))
+    toggle(category, "lootVendors", "ammoCount", "AMMO_COUNT", apply("Ammo"))
+    toggle(category, "lootVendors", "disenchantClick", "DISENCHANT_CLICK", apply("ItemActions"))
+    toggle(category, "automation", "confirmLootPickup", "CONFIRM_LOOT_PICKUP", apply("Interactions"))
+    toggle(category, "automation", "confirmLootRolls", "CONFIRM_LOOT_ROLLS", apply("Interactions"))
+    header(layout, L.SECTION_SERVICES)
+    toggle(category, "lootVendors", "autoRepair", "AUTO_REPAIR", apply("LootVendors"))
+    toggle(
+        category,
+        "lootVendors",
+        "guildRepair",
+        "GUILD_REPAIR",
+        apply("LootVendors"),
+        parentEnabled("lootVendors", "autoRepair")
     )
-    local border = checkbox(page, L.HIDE_MINIMAP_BORDER, "hideBorder", 7, Murgle.Minimap.ApplyBorder, "minimap")
-    local square = checkbox(page, L.SQUARE_MINIMAP, "square", 8, Murgle.Minimap.ApplySquare, "minimap")
-    local dayNight = checkbox(page, L.HIDE_DAY_NIGHT, "hideDayNight", 9, Murgle.Minimap.ApplyDayNight, "minimap")
-    local header = checkbox(page, L.HIDE_MINIMAP_HEADER, "hideHeader", 10, Murgle.Minimap.ApplyHeader, "minimap")
-    for row, control in ipairs({
-        zone,
-        clock,
-        calendar,
-        tracking,
-        zoom,
-        compartment,
-        border,
-        square,
-        dayNight,
-        header,
+    toggle(category, "lootVendors", "sellJunk", "SELL_JUNK", apply("LootVendors"))
+    toggle(category, "lootVendors", "bulkBuy", "BULK_BUY", apply("Commerce"))
+    toggle(category, "automation", "trainAll", "TRAIN_ALL", apply("Trainer"))
+    toggle(category, "automation", "skipServiceGossip", "SKIP_SERVICE_GOSSIP", apply("Interactions"))
+end
+local function buildChat(category, layout)
+    header(layout, L.CATEGORY_CHAT)
+    toggle(category, "chat", "hideButtons", "HIDE_CHAT_BUTTONS", apply("Chat", "ApplyButtons"))
+    toggle(category, "chat", "hideVoiceButtons", "HIDE_VOICE_BUTTONS", apply("Chat", "ApplyVoiceButtons"))
+    toggle(category, "chat", "hideCombatLog", "HIDE_COMBAT_LOG", apply("Chat", "ApplyCombatLog"))
+    choice(category, "chat", "tabs", "CHAT_TABS", {
+        { "show", L.CHAT_DEFAULT },
+        { "mouseover", L.CHAT_FADE },
+        { "hide", L.CHAT_HIDE },
+    }, apply("Chat", "ApplyTabs"))
+    header(layout, L.CATEGORY_TOOLTIP)
+    toggle(category, "tooltip", "cursorAnchor", "CURSOR_ANCHOR", apply("Tooltip", "ApplyCursorAnchor"))
+    choice(category, "tooltip", "anchor", "CURSOR_ANCHOR", {
+        { "left", L.CURSOR_LEFT },
+        { "right", L.CURSOR_RIGHT },
+        { "cursor", L.CURSOR_AT },
+    }, apply("Tooltip", "ApplyCursorAnchor"), parentEnabled("tooltip", "cursorAnchor"))
+    toggle(category, "tooltip", "hideInCombat", "COMBAT_TOOLTIP_HIDE", apply("Tooltip", "ApplyCombatHide"))
+    toggle(category, "tooltip", "itemDetails", "ITEM_DETAILS", apply("ItemDetails"))
+end
+local function buildSound(category, layout)
+    header(layout, L.SECTION_ERRORS, L.ERROR_SCOPE_NOTE)
+    choice(
+        category,
+        "errors",
+        "mode",
+        "SECTION_ERRORS",
+        { { "all", L.ALL }, { "important", L.IMPORTANT } },
+        apply("Errors")
+    )
+    header(layout, L.SECTION_SOUND, L.SOUND_HELP)
+    for _, item in ipairs({
+        { "muteFizzle", "MUTE_FIZZLE" },
+        { "muteErrorSpeech", "MUTE_ERROR_SPEECH" },
+        { "muteTrains", "MUTE_TRAINS" },
+        { "muteMechanicalSteps", "MUTE_MECHANICAL_STEPS" },
+        { "muteFootsteps", "MUTE_FOOTSTEPS" },
+        { "muteHooves", "MUTE_HOOVES" },
+        { "muteChimes", "MUTE_CHIMES" },
+        { "muteInterface", "MUTE_INTERFACE" },
+        { "muteReadyCheck", "MUTE_READY_CHECK" },
+        { "muteCatYawns", "MUTE_CAT_YAWNS" },
+        { "mutePiccolo", "MUTE_PICCOLO" },
+        { "muteMechanostriders", "MUTE_MECHANOSTRIDERS" },
+        { "muteZeppelins", "MUTE_ZEPPELINS" },
     }) do
-        control:SetPoint("TOPLEFT", math.floor((row - 1) / 6) * 215, -36 - ((row - 1) % 6) * 25)
-    end
-    helpButton(square, L.SQUARE_MINIMAP_NOTE, square.caption)
-    function page:Refresh()
-        zone:SetChecked(MurgleDB.minimap.hideZoneText == true)
-        clock:SetChecked(MurgleDB.minimap.hideClock == true)
-        calendar:SetChecked(MurgleDB.minimap.hideCalendar == true)
-        tracking:SetChecked(MurgleDB.minimap.hideTracking == true)
-        zoom:SetChecked(MurgleDB.minimap.hideZoomButtons == true)
-        compartment:SetChecked(MurgleDB.minimap.hideAddonCompartment == true)
-        border:SetChecked(MurgleDB.minimap.hideBorder == true)
-        if MurgleDB.minimap.square == true then
-            border:Hide()
-        else
-            border:Show()
-        end
-        square:SetChecked(MurgleDB.minimap.square == true)
-        header:SetChecked(MurgleDB.minimap.hideHeader == true)
-        dayNight:SetChecked(MurgleDB.minimap.hideDayNight == true)
-    end
-    return page
-end
-
-local function chatPage()
-    local page = newPage(L.CATEGORY_CHAT)
-    local buttons = checkbox(page, L.HIDE_CHAT_BUTTONS, "hideButtons", 1, Murgle.Chat.ApplyButtons, "chat")
-    local combatLog = checkbox(page, L.HIDE_COMBAT_LOG, "hideCombatLog", 2, Murgle.Chat.ApplyCombatLog, "chat")
-    local tabsLabel = label(page, L.CHAT_TABS)
-    tabsLabel:SetPoint("TOPLEFT", 0, -116)
-    helpButton(page, L.CHAT_TABS_MOUSEOVER_NOTE .. "\n" .. L.CHAT_TABS_HIDE_NOTE, tabsLabel)
-    local tabs = {}
-    for index, choice in ipairs({ { "hide", L.CHAT_HIDE }, { "mouseover", L.CHAT_FADE }, { "show", L.CHAT_DEFAULT } }) do
-        local mode = choice[1]
-        local control, caption = button(page, choice[2], 100, function()
-            MurgleDB.chat.tabs = mode
-            Murgle.Chat.ApplyTabs()
-            page:Refresh()
-        end)
-        control:SetPoint("TOPLEFT", (index - 1) * 108, -140)
-        tabs[mode] = caption
-    end
-    local voice = checkbox(page, L.HIDE_VOICE_BUTTONS, "hideVoiceButtons", 5, Murgle.Chat.ApplyVoiceButtons, "chat")
-    helpButton(voice, L.HIDE_VOICE_BUTTONS_NOTE, voice.caption)
-    function page:Refresh()
-        buttons:SetChecked(MurgleDB.chat.hideButtons == true)
-        voice:SetChecked(MurgleDB.chat.hideVoiceButtons == true)
-        combatLog:SetChecked(MurgleDB.chat.hideCombatLog == true)
-        local mode = tabs[MurgleDB.chat.tabs] and MurgleDB.chat.tabs or "show"
-        for key, caption in pairs(tabs) do
-            setSelected(caption, key == mode)
-        end
-    end
-    return page
-end
-
-local function tooltipPage()
-    local page = newPage(L.CATEGORY_TOOLTIP)
-    local cursor = checkbox(page, L.CURSOR_ANCHOR, "cursorAnchor", 1, Murgle.Tooltip.ApplyCursorAnchor, "tooltip")
-    local combat = checkbox(page, L.COMBAT_TOOLTIP_HIDE, "hideInCombat", 2, Murgle.Tooltip.ApplyCombatHide, "tooltip")
-    local spells = checkbox(page, L.SPELL_DETAILS, "spellDetails", 4, Murgle.ItemDetails.ApplyAll, "tooltip")
-    helpButton(page, L.SPELL_DETAILS_HELP, spells.caption)
-    local captions, controls = {}, {}
-    for index, choice in ipairs({ { "left", L.CURSOR_LEFT }, { "right", L.CURSOR_RIGHT }, { "cursor", L.CURSOR_AT } }) do
-        local control, caption = button(page, choice[2], 132, function()
-            Murgle.Tooltip.SetAnchor(choice[1])
-            page:Refresh()
-        end)
-        control:SetPoint("TOPLEFT", (index - 1) * 140, -66)
-        captions[choice[1]] = caption
-        controls[choice[1]] = control
-    end
-    helpButton(page, L.TOOLTIP_SCOPE_NOTE, combat.caption)
-    function page:Refresh()
-        spells:SetChecked(MurgleDB.tooltip.spellDetails == true)
-        spells:SetPoint("TOPLEFT", 0, MurgleDB.tooltip.cursorAnchor == true and -144 or -108)
-        cursor:SetChecked(MurgleDB.tooltip.cursorAnchor == true)
-        combat:SetChecked(MurgleDB.tooltip.hideInCombat == true)
-        local showCursorOptions = MurgleDB.tooltip.cursorAnchor == true
-        combat:SetPoint("TOPLEFT", 0, showCursorOptions and -108 or -72)
-        for key, caption in pairs(captions) do
-            if showCursorOptions then
-                controls[key]:Show()
-            else
-                controls[key]:Hide()
-            end
-            setSelected(caption, key == MurgleDB.tooltip.anchor)
-        end
-    end
-    return page
-end
-
-local function spellQueueControl(page)
-    if not Murgle.Interface.GetSpellQueueWindow() then
-        return
-    end
-    local title = label(page, L.SPELL_QUEUE)
-    title:SetPoint("TOPLEFT", 0, -279)
-    local valueText = label(page, "", 12)
-    valueText:SetPoint("TOPRIGHT", -10, -279)
-    helpButton(page, L.SPELL_QUEUE_HELP, title)
-    local slider = CreateFrame("Slider", nil, page)
-    slider:SetSize(400, 16)
-    slider:SetPoint("TOPLEFT", 0, -305)
-    slider:SetOrientation("HORIZONTAL")
-    slider:SetMinMaxValues(0, 400)
-    slider:SetValueStep(10)
-    slider:SetObeyStepOnDrag(true)
-    local track = slider:CreateTexture(nil, "BACKGROUND")
-    track:SetPoint("LEFT")
-    track:SetSize(400, 4)
-    track:SetColorTexture(unpack(COLORS.border))
-    local thumb = slider:CreateTexture(nil, "ARTWORK")
-    thumb:SetSize(10, 16)
-    thumb:SetColorTexture(unpack(COLORS.accent))
-    slider:SetThumbTexture(thumb)
-    local low, high = label(page, L.SPELL_QUEUE_OFF, 11), label(page, L.SPELL_QUEUE_DEFAULT, 11)
-    low:SetPoint("TOPLEFT", 0, -326)
-    high:SetPoint("TOPRIGHT", -10, -326)
-    local refreshing = false
-    local function refresh()
-        local value = Murgle.Interface.GetSpellQueueWindow()
-        if value then
-            refreshing = true
-            slider:SetValue(math.min(value, 400))
-            refreshing = false
-            valueText:SetText(tostring(value) .. " ms")
-        end
-    end
-    slider:SetScript("OnValueChanged", function(_, value)
-        if refreshing then
-            return
-        end
-        Murgle.Interface.SetSpellQueueWindow(value)
-        refresh()
-    end)
-    local auto = button(page, L.SPELL_QUEUE_AUTO, 120, function()
-        Murgle.Interface.AutoDetectSpellQueueWindow()
-        refresh()
-    end)
-    auto:SetSize(120, 22)
-    auto:SetPoint("TOPLEFT", 195, -276)
-    refresh()
-    return refresh
-end
-
-local function automationPage()
-    local page = newPage(L.CATEGORY_AUTOMATION)
-    local accept = checkbox(page, L.AUTO_QUEST, "autoQuest", 1, Murgle.Automation.ApplyAll, "automation")
-    local turnIn = checkbox(page, L.AUTO_TURN_IN, "autoTurnIn", 2, Murgle.Automation.ApplyAll, "automation")
-    helpButton(page, L.QUEST_AUTOMATION_NOTE, accept.caption)
-    local refresh =
-        checkbox(page, L.AUTO_WORLD_REFRESH, "autoWorldRefresh", 4, Murgle.Automation.ApplyAll, "automation")
-    helpButton(page, L.WORLD_REFRESH_SCOPE_NOTE .. "\n" .. L.WORLD_REFRESH_HARDCORE_NOTE, refresh.caption)
-    local refreshCaptions, refreshControls = {}, {}
-    for index, choice in ipairs({
-        { "hideOnly", L.WORLD_REFRESH_HIDE_ONLY },
-        { "acceptAndHide", L.WORLD_REFRESH_ACCEPT_HIDE },
-    }) do
-        local mode = choice[1]
-        local control, caption = button(page, choice[2], 160, function()
-            MurgleDB.automation.worldRefreshMode = mode
-            Murgle.Automation.ApplyAll()
-            page:Refresh()
-        end)
-        control:SetPoint("TOPLEFT", (index - 1) * 168, -174)
-        refreshCaptions[mode] = caption
-        refreshControls[mode] = control
-    end
-    local refreshQueue = spellQueueControl(page)
-    function page:Refresh()
-        if refreshQueue then
-            refreshQueue()
-        end
-        accept:SetChecked(MurgleDB.automation.autoQuest == true)
-        turnIn:SetChecked(MurgleDB.automation.autoTurnIn == true)
-        refresh:SetChecked(MurgleDB.automation.autoWorldRefresh == true)
-        for mode, caption in pairs(refreshCaptions) do
-            if MurgleDB.automation.autoWorldRefresh == true then
-                refreshControls[mode]:Show()
-            else
-                refreshControls[mode]:Hide()
-            end
-            setSelected(caption, mode == MurgleDB.automation.worldRefreshMode)
-        end
-    end
-    return page
-end
-
-local function lootVendorsPage()
-    local page = newPage(L.CATEGORY_LOOT_VENDORS)
-    local repair = checkbox(page, L.AUTO_REPAIR, "autoRepair", 1, Murgle.LootVendors.ApplyAll, "lootVendors")
-    local guild = checkbox(page, L.GUILD_REPAIR, "guildRepair", 2, Murgle.LootVendors.ApplyAll, "lootVendors")
-    local junk = checkbox(page, L.SELL_JUNK, "sellJunk", 3, Murgle.LootVendors.ApplyAll, "lootVendors")
-    local fast = checkbox(page, L.FAST_LOOT, "fastLoot", 4, Murgle.LootVendors.ApplyAll, "lootVendors")
-    helpButton(page, L.AUTO_REPAIR_NOTE, repair.caption)
-    helpButton(page, L.SELL_JUNK_NOTE, junk.caption)
-    helpButton(page, L.FAST_LOOT_NOTE, fast.caption)
-    function page:Refresh()
-        repair:SetChecked(MurgleDB.lootVendors.autoRepair == true)
-        guild:SetChecked(MurgleDB.lootVendors.guildRepair == true)
-        if MurgleDB.lootVendors.autoRepair == true then
-            guild:Show()
-            guild:SetPoint("TOPLEFT", 22, -66)
-            junk:SetPoint("TOPLEFT", 0, -102)
-            fast:SetPoint("TOPLEFT", 0, -138)
-        else
-            guild:Hide()
-            junk:SetPoint("TOPLEFT", 0, -72)
-            fast:SetPoint("TOPLEFT", 0, -108)
-        end
-        junk:SetChecked(MurgleDB.lootVendors.sellJunk == true)
-        fast:SetChecked(MurgleDB.lootVendors.fastLoot == true)
-    end
-    return page
-end
-
-local function errorsPage()
-    local page = newPage(L.CATEGORY_ERRORS_SOUND)
-    local captions = {}
-    for index, choice in ipairs({ { "all", L.ALL }, { "important", L.IMPORTANT } }) do
-        local mode = choice[1]
-        local control, caption = button(page, choice[2], 130, function()
-            Murgle.Errors.SetMode(mode)
-            page:Refresh()
-        end)
-        control:SetPoint("TOPLEFT", (index - 1) * 138, -32)
-        captions[mode] = caption
-    end
-    local note = label(page, L.ERROR_SCOPE_NOTE, 12)
-    note:SetPoint("TOPLEFT", 0, -68)
-    note:SetSize(410, 32)
-    local checks = {}
-    for index, item in ipairs({
-        { "muteFizzle", L.MUTE_FIZZLE },
-        { "muteErrorSpeech", L.MUTE_ERROR_SPEECH },
-        { "muteTrains", L.MUTE_TRAINS },
-        { "muteMechanicalSteps", L.MUTE_MECHANICAL_STEPS },
-        { "muteFootsteps", L.MUTE_FOOTSTEPS },
-        { "muteHooves", L.MUTE_HOOVES },
-        { "muteChimes", L.MUTE_CHIMES },
-        { "muteInterface", L.MUTE_INTERFACE },
-        { "muteReadyCheck", L.MUTE_READY_CHECK },
-        { "muteCatYawns", L.MUTE_CAT_YAWNS },
-        { "mutePiccolo", L.MUTE_PICCOLO },
-        { "muteMechanostriders", L.MUTE_MECHANOSTRIDERS },
-        { "muteZeppelins", L.MUTE_ZEPPELINS },
-    }) do
-        local check = checkbox(page, item[2], item[1], 1, Murgle.Sound.ApplyAll, "sound")
-        check:SetPoint("TOPLEFT", ((index - 1) % 2) * 215, -150 - math.floor((index - 1) / 2) * 24)
-        checks[item[1]] = check
-    end
-    local muteAll, muteCaption = button(page, L.MUTE_ALL, 166, function()
-        Murgle.Sound.SetAllMuted(not Murgle.Sound.AreAllMuted())
-        page:Refresh()
-    end)
-    muteAll:SetSize(166, 24)
-    muteAll:SetPoint("TOPLEFT", 0, -120)
-    helpButton(page, L.SOUND_HELP, muteCaption)
-    function page:Refresh()
-        muteCaption:SetText(Murgle.Sound.AreAllMuted() and L.UNMUTE_ALL or L.MUTE_ALL)
-        for key, check in pairs(checks) do
-            check:SetChecked(MurgleDB.sound[key] == true)
-        end
-        local selected = MurgleDB.errors.mode
-        if not captions[selected] then
-            selected = "all"
-        end
-        for mode, caption in pairs(captions) do
-            setSelected(caption, mode == selected)
-        end
-    end
-    return page
-end
-
--- Page factories are settings-only dispatch; feature modules remain independent.
-local function framesPage()
-    local page = newPage(L.CATEGORY_FRAMES)
-    local checks = {}
-    for row, item in ipairs({
-        { "cleanPlayer", L.CLEAN_PLAYER },
-        { "cleanTarget", L.CLEAN_TARGET },
-        { "cleanTargetOfTarget", L.CLEAN_TARGET_OF_TARGET },
-        { "hidePlayerName", L.HIDE_PLAYER_NAME },
-        { "enemyFactionOnly", L.ENEMY_FACTION_ONLY },
-    }) do
-        checks[item[1]] = checkbox(page, item[2], item[1], row, Murgle.Frames.ApplyAll, "frames")
-        checks[item[1]]:SetPoint("TOPLEFT", 0, -36 - (row - 1) * 25)
-    end
-    local captions = {}
-    for row, item in ipairs({
-        { "enemyNameplates", L.ENEMY_NAMEPLATES },
-        { "friendlyNameplates", L.FRIENDLY_NAMEPLATES },
-    }) do
-        local key = item[1]
-        if Murgle.Frames.NativeAvailable(key) then
-            local heading = label(page, item[2])
-            heading:SetPoint("TOPLEFT", 0, -166 - (row - 1) * 65)
-            captions[key] = {}
-            for index, mode in ipairs({
-                { "blizzard", L.GAME_SETTINGS },
-                { "combat", L.COMBAT },
-                { "hidden", L.HIDDEN },
-            }) do
-                local control, caption = button(page, mode[2], 130, function()
-                    MurgleDB.frames[key] = mode[1]
-                    Murgle.Frames.ApplyAll()
-                    page:Refresh()
-                end)
-                control:SetPoint("TOPLEFT", (index - 1) * 138, -187 - (row - 1) * 65)
-                captions[key][mode[1]] = caption
-            end
-        end
-    end
-    for row, item in ipairs({
-        { "friendlyNamesOnly", L.FRIENDLY_NAMES_ONLY },
-    }) do
-        if Murgle.Frames.NativeAvailable(item[1]) then
-            local control = checkbox(page, item[2], item[1], row, Murgle.Frames.ApplyAll, "frames")
-            control:SetPoint("TOPLEFT", 0, -296 - (row - 1) * 25)
-            checks[item[1]] = control
-        end
-    end
-    function page:Refresh()
-        for key, control in pairs(checks) do
-            control:SetChecked(MurgleDB.frames[key] == true)
-        end
-        for key, modes in pairs(captions) do
-            for mode, caption in pairs(modes) do
-                setSelected(caption, MurgleDB.frames[key] == mode)
-            end
-        end
-    end
-    return page
-end
-
-local function conveniencePage()
-    local page = newPage(L.CATEGORY_CONVENIENCE)
-    local controls = {}
-    local choices = {
-        { L.TRAIN_ALL, "automation", "trainAll", Murgle.Trainer.ApplyAll, L.TRAIN_ALL_HELP },
-        { L.WARN_LOW_RANK_LABEL, "automation", "warnLowRank", Murgle.SpellRanks.ApplyAll, L.WARN_LOW_RANK_HELP },
-        {
-            L.SKIP_SERVICE_GOSSIP,
-            "automation",
-            "skipServiceGossip",
-            Murgle.Interactions.ApplyAll,
-            L.SKIP_SERVICE_GOSSIP_HELP,
-        },
-        { L.DISENCHANT_CLICK, "lootVendors", "disenchantClick", Murgle.ItemActions.ApplyAll, L.DISENCHANT_CLICK_HELP },
-        { L.BULK_BUY, "lootVendors", "bulkBuy", Murgle.Commerce.ApplyAll, L.BULK_BUY_HELP },
-        { L.RESTOCK, "lootVendors", "restock", Murgle.Commerce.ApplyAll, L.RESTOCK_HELP },
-        {
-            L.CONFIRM_LOOT_PICKUP,
-            "automation",
-            "confirmLootPickup",
-            Murgle.Interactions.ApplyAll,
-            L.CONFIRM_LOOT_PICKUP_HELP,
-        },
-        {
-            L.CONFIRM_LOOT_ROLLS,
-            "automation",
-            "confirmLootRolls",
-            Murgle.Interactions.ApplyAll,
-            L.CONFIRM_LOOT_ROLLS_HELP,
-        },
-        { L.REWARD_VALUES, "quests", "rewardValues", Murgle.Rewards.ApplyAll, L.REWARD_VALUES_HELP },
-    }
-    for row, choice in ipairs(choices) do
-        local control = checkbox(page, choice[1], choice[3], row, choice[4], choice[2])
-        control:SetPoint("TOPLEFT", 0, -36 - (row - 1) * 24)
-        helpButton(control, choice[5], control.caption)
-        controls[row] = control
-    end
-    local clear = button(page, L.CLEAR_RESTOCK, 200, Murgle.Commerce.ClearRestockTargets)
-    clear:SetSize(200, 25)
-    clear:SetPoint("TOPLEFT", 0, -280)
-    local casting = button(page, L.CLICK_CASTING, 205, Murgle.Interactions.OpenClickCasting)
-    casting:SetSize(205, 25)
-    casting:SetPoint("TOPLEFT", 0, -310)
-    local ranks = button(page, L.CHECK_SPELL_RANKS, 190, Murgle.SpellRanks.Check)
-    ranks:SetSize(190, 25)
-    ranks:SetPoint("TOPLEFT", 215, -310)
-    function page:Refresh()
-        for row, choice in ipairs(choices) do
-            controls[row]:SetChecked(MurgleDB[choice[2]][choice[3]] == true)
-        end
-        if MurgleDB.lootVendors.restock == true then
-            clear:Show()
-        else
-            clear:Hide()
-        end
-        if MurgleDB.automation.warnLowRank == true then
-            ranks:Show()
-        else
-            ranks:Hide()
-        end
-    end
-    return page
-end
-
-local function itemsPage()
-    local page = newPage(L.CATEGORY_ITEMS)
-    local ammo = checkbox(page, L.AMMO_COUNT, "ammoCount", 1, Murgle.Ammo.ApplyAll, "lootVendors")
-    local details = checkbox(page, L.ITEM_DETAILS, "itemDetails", 2, Murgle.ItemDetails.ApplyAll, "tooltip")
-    local junk = checkbox(page, L.MARKED_JUNK, "markedJunk", 3, Murgle.MarkedJunk.ApplyAll, "lootVendors")
-    local starters =
-        checkbox(page, L.USE_QUEST_STARTERS, "useQuestStarters", 4, Murgle.ItemOpening.ApplyAll, "automation")
-    for row, control in ipairs({ ammo, details, junk, starters }) do
-        control:SetPoint("TOPLEFT", 0, -36 - (row - 1) * 24)
-    end
-    helpButton(page, L.USE_QUEST_STARTERS_HELP, starters.caption)
-    helpButton(page, L.AMMO_COUNT_HELP, ammo.caption)
-    helpButton(page, L.ITEM_DETAILS_HELP, details.caption)
-    helpButton(page, L.MARKED_JUNK_HELP, junk.caption)
-    local status = label(page, "", 11)
-    status:SetPoint("TOPLEFT", 0, -240)
-    status:SetSize(410, 60)
-    local count = label(page, "", 12)
-    count:SetPoint("TOPLEFT", 0, -154)
-    local mark = button(page, L.MARK_CURSOR_ITEM, 170, function()
-        status:SetText(Murgle.MarkedJunk.MarkCursor() and L.MARK_RESULT or L.MARK_REJECTED)
-        page:Refresh()
-    end)
-    mark:SetPoint("TOPLEFT", 0, -190)
-    local clear = button(page, L.CLEAR_MARKED_ITEMS, 170, function()
-        Murgle.MarkedJunk.ClearMarks()
-        page:Refresh()
-    end)
-    clear:SetPoint("TOPLEFT", 180, -190)
-    local sell = button(page, L.SELL_MARKED, 170, Murgle.MarkedJunk.RequestSell)
-    sell:SetPoint("TOPLEFT", 0, -220)
-    status:SetPoint("TOPLEFT", 0, -265)
-    function page:Refresh()
-        starters:SetChecked(MurgleDB.automation.useQuestStarters == true)
-        ammo:SetChecked(MurgleDB.lootVendors.ammoCount == true)
-        details:SetChecked(MurgleDB.tooltip.itemDetails == true)
-        junk:SetChecked(MurgleDB.lootVendors.markedJunk == true)
-        count:SetText(string.format(L.MARKED_COUNT, Murgle.MarkedJunk.CountMarks()))
-        if MurgleDB.lootVendors.markedJunk == true then
-            mark:Show()
-            clear:Show()
-            sell:Show()
-        else
-            mark:Hide()
-            clear:Hide()
-            sell:Hide()
-        end
-    end
-    return page
-end
-
-local function actionPagingPage()
-    local page = newPage(L.CATEGORY_ACTION_PAGING)
-    local enabled = checkbox(page, L.MODIFIER_PAGING, "holdActionPages", 1, Murgle.ModifierPaging.ApplyAll)
-    helpButton(page, L.MODIFIER_PAGING_HELP, enabled.caption)
-    local choices = {}
-    for row, option in ipairs({
-        { "holdShiftPage", L.PAGING_SHIFT },
-        { "holdCtrlPage", L.PAGING_CTRL },
-        { "holdAltPage", L.PAGING_ALT },
-    }) do
-        local key = option[1]
-        local heading = label(page, option[2])
-        heading:SetPoint("TOPLEFT", 0, -88 - (row - 1) * 62)
-        choices[key] = {}
-        for value = 0, 6 do
-            local chosen = value
-            local control, caption = button(page, value == 0 and L.PAGING_OFF or tostring(value), 45, function()
-                MurgleDB.interface[key] = chosen
-                Murgle.ModifierPaging.ApplyAll()
-                page:Refresh()
-            end)
-            control:SetPoint("TOPLEFT", value * 51, -110 - (row - 1) * 62)
-            choices[key][value] = caption
-        end
-    end
-    local note = label(page, "", 11)
-    note:SetSize(410, 65)
-    note:SetPoint("TOPLEFT", 0, -283)
-    function page:Refresh()
-        enabled:SetChecked(MurgleDB.interface.holdActionPages == true)
-        local available = Murgle.ModifierPaging.Available()
-        enabled:EnableMouse(available == true or MurgleDB.interface.holdActionPages == true)
-        if not available then
-            note:SetText(L.PAGING_UNAVAILABLE)
-        elseif MurgleDB.interface.holdActionPages == true and not Murgle.ModifierPaging.IsActive() then
-            note:SetText(L.PAGING_INACTIVE)
-        else
-            note:SetText(L.PAGING_NATIVE_RETURN)
-        end
-        for key, captions in pairs(choices) do
-            for value, caption in pairs(captions) do
-                setSelected(caption, MurgleDB.interface[key] == value)
-            end
-        end
-    end
-    return page
-end
-
-local pageFactories = {
-    ActionPaging = actionPagingPage,
-    Items = itemsPage,
-    Convenience = conveniencePage,
-    Frames = framesPage,
-    Interface = function()
-        return interfacePage()
-    end,
-    Minimap = function()
-        return minimapPage()
-    end,
-    Quests = function()
-        local page = newPage(L.CATEGORY_QUESTS)
-        local sparkles = checkbox(page, L.QUEST_SPARKLES, "sparkles", 1, Murgle.Quests.ApplyAll, "quests")
-        local note = label(page, L.QUEST_SPARKLES_NOTE)
-        note:SetPoint("TOPLEFT", 0, -66)
-        note:SetSize(410, 32)
-        helpButton(page, function()
-            return Murgle.Quests.SparklesAvailable() and L.QUEST_SPARKLES_HELP or L.QUEST_SPARKLES_UNAVAILABLE
-        end, sparkles.caption)
-        local reputation =
-            checkbox(page, L.AUTO_WATCH_REPUTATION, "autoWatchReputation", 5, Murgle.Quests.ApplyAll, "quests")
-        local reputationNote = label(page, L.AUTO_WATCH_REPUTATION_NOTE)
-        reputationNote:SetPoint("TOPLEFT", 0, -208)
-        reputationNote:SetSize(410, 32)
-        helpButton(page, function()
-            return Murgle.Quests.ReputationAvailable() and L.AUTO_WATCH_REPUTATION_HELP
-                or L.AUTO_WATCH_REPUTATION_UNAVAILABLE
-        end, reputation.caption)
-        local levels, levelCaption = button(page, L.SHOW_QUEST_LEVELS, 245, function()
-            local value = Murgle.NativeOptions.Read("showQuestLevel")
-            if value then
-                Murgle.NativeOptions.Set("showQuestLevel", value == "1" and "0" or "1")
-            end
-            page:Refresh()
-        end)
-        levels:SetPoint("TOPLEFT", 0, -112)
-        helpButton(page, L.SHOW_QUEST_LEVELS_HELP, levelCaption)
-        function page:Refresh()
-            local levelValue, writable = Murgle.NativeOptions.Read("showQuestLevel")
-            levels:EnableMouse(writable == true)
-            levelCaption:SetText(L.SHOW_QUEST_LEVELS .. (levelValue and "" or " - " .. L.NATIVE_UNAVAILABLE))
-            setSelected(levelCaption, levelValue == "1")
-            reputation:SetChecked(MurgleDB.quests.autoWatchReputation == true)
-            local reputationAvailable = Murgle.Quests.ReputationAvailable()
-            reputation:EnableMouse(reputationAvailable == true)
-            sparkles:SetChecked(MurgleDB.quests.sparkles == true)
-            local available = Murgle.Quests.SparklesAvailable()
-            sparkles:EnableMouse(available)
-        end
-        return page
-    end,
-    Automation = function()
-        return automationPage()
-    end,
-    LootVendors = function()
-        return lootVendorsPage()
-    end,
-    Chat = function()
-        return chatPage()
-    end,
-    Tooltip = function()
-        return tooltipPage()
-    end,
-    ErrorsSound = function()
-        return errorsPage()
-    end,
-}
-
-function Settings.SelectCategory(name)
-    if not window or not pageFactories[name] then
-        return
-    end
-    if pages[selected] then
-        pages[selected]:Hide()
-    end
-    selected = name
-    if not pages[name] then
-        pages[name] = pageFactories[name]()
-    end
-    pages[name]:Show()
-    if pages[name].Refresh then
-        pages[name]:Refresh()
-    end
-    for key, text in pairs(navigation) do
-        setSelected(text, key == name)
+        toggle(category, "sound", item[1], item[2], apply("Sound"))
     end
 end
-
-local function setPageFeatures(enabled)
-    local page = pages[selected]
-    if not page then
-        return
-    end
-    local apply = {}
-    for _, item in ipairs(page.toggles or {}) do
-        MurgleDB[item.category][item.key] = enabled
-        apply[item.apply] = true
-    end
-    for callback in pairs(apply) do
-        callback()
-    end
-    if page.Refresh then
-        page:Refresh()
+function Settings.Refresh()
+    if root then
+        for _, variable in ipairs(variables) do
+            native.NotifyUpdate(variable)
+        end
     end
 end
-
-local function createWindow()
-    window = CreateFrame("Frame", "MurgleSettingsFrame", UIParent)
-    window:SetSize(650, 470)
-    window:SetPoint("CENTER")
-    window:SetFrameStrata("DIALOG")
-    window:EnableMouse(true)
-    window:SetMovable(true)
-    window:SetClampedToScreen(true)
-    local header = CreateFrame("Frame", nil, window)
-    header:SetPoint("TOPLEFT", 0, 0)
-    header:SetSize(550, 54)
-    header:EnableMouse(true)
-    header:RegisterForDrag("LeftButton")
-    header:SetScript("OnDragStart", function()
-        window:StartMoving()
-    end)
-    header:SetScript("OnDragStop", function()
-        window:StopMovingOrSizing()
-    end)
-    window:SetScript("OnHide", function()
-        window:StopMovingOrSizing()
-    end)
-    local background = window:CreateTexture(nil, "BACKGROUND")
-    background:SetAllPoints(window)
-    background:SetColorTexture(unpack(COLORS.background))
-    local icon = window:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(32, 32)
-    icon:SetPoint("TOPLEFT", 18, -16)
-    icon:SetTexture("Interface\\AddOns\\Murgle\\Media\\MurgleIcon.tga")
-    local title = label(window, L.TITLE, 22)
-    title:SetPoint("TOPLEFT", 60, -21)
-    local close = button(window, L.CLOSE, 74, Settings.Hide)
-    close:SetPoint("TOPRIGHT", -16, -16)
-    local reset = button(window, L.RESET, 120, Settings.ConfirmReset)
-    reset:SetSize(120, 26)
-    reset:SetPoint("BOTTOMLEFT", 18, 18)
-    content = CreateFrame("Frame", nil, window)
-    content:SetPoint("TOPLEFT", 202, -70)
-    content:SetSize(430, 325)
-    local enable = button(content, L.ENABLE_ALL, 112, function()
-        setPageFeatures(true)
-    end)
-    enable:SetSize(112, 26)
-    enable:SetPoint("TOPRIGHT", -120, 4)
-    local disable = button(content, L.DISABLE_ALL, 112, function()
-        setPageFeatures(false)
-    end)
-    disable:SetSize(112, 26)
-    disable:SetPoint("TOPRIGHT", 0, 4)
-    local panel = window:CreateTexture(nil, "BACKGROUND")
-    panel:SetPoint("TOPLEFT", 194, -60)
-    panel:SetSize(440, 345)
-    panel:SetColorTexture(unpack(COLORS.panel))
-
-    local function addNavigation(name, titleText, row)
-        local control, text = button(window, titleText, 166, function()
-            Settings.SelectCategory(name)
-        end)
-        control:SetSize(166, 28)
-        control:SetPoint("TOPLEFT", 18, -66 - (row - 1) * 27)
-        navigation[name] = text
-    end
-    addNavigation("Interface", L.CATEGORY_INTERFACE, 1)
-    addNavigation("Minimap", L.CATEGORY_MINIMAP, 2)
-    addNavigation("Automation", L.CATEGORY_AUTOMATION, 3)
-    addNavigation("LootVendors", L.CATEGORY_LOOT_VENDORS, 4)
-    addNavigation("Chat", L.CATEGORY_CHAT, 5)
-    addNavigation("Tooltip", L.CATEGORY_TOOLTIP, 6)
-    addNavigation("ErrorsSound", L.CATEGORY_ERRORS_SOUND, 7)
-    addNavigation("Quests", L.CATEGORY_QUESTS, 8)
-    addNavigation("Frames", L.CATEGORY_FRAMES, 9)
-    addNavigation("Convenience", L.CATEGORY_CONVENIENCE, 10)
-    addNavigation("Items", L.CATEGORY_ITEMS, 11)
-    addNavigation("ActionPaging", L.CATEGORY_ACTION_PAGING, 12)
-    UISpecialFrames[#UISpecialFrames + 1] = "MurgleSettingsFrame"
-    Settings.SelectCategory(selected)
-end
-
-function Settings.Show()
-    if not window then
-        createWindow()
-    end
-    window:Show()
-end
-
-function Settings.Hide()
-    if window then
-        window:Hide()
-    end
-end
-
-function Settings.Toggle()
-    if window and window:IsShown() then
-        Settings.Hide()
-    else
-        Settings.Show()
-    end
-end
-
 function Settings.ConfirmReset()
     if not StaticPopupDialogs.MURGLE_RESET then
         StaticPopupDialogs.MURGLE_RESET = {
@@ -987,11 +399,6 @@ function Settings.ConfirmReset()
             button2 = L.CANCEL,
             OnAccept = function()
                 Murgle.ResetDB()
-                for _, page in pairs(pages) do
-                    if page.Refresh then
-                        page:Refresh()
-                    end
-                end
             end,
             timeout = 0,
             whileDead = true,
@@ -1000,3 +407,43 @@ function Settings.ConfirmReset()
     end
     StaticPopup_Show("MURGLE_RESET")
 end
+function Settings.Initialize()
+    if root then
+        return true
+    end
+    if not available() then
+        if not loading then
+            loading = CreateFrame("Frame")
+            loading:SetScript("OnEvent", function()
+                Settings.Initialize()
+            end)
+            loading:RegisterEvent("ADDON_LOADED")
+        end
+        return false
+    end
+    if loading then
+        loading:UnregisterEvent("ADDON_LOADED")
+    end
+    native = _G.Settings
+    local layout
+    root, layout = native.RegisterVerticalLayoutCategory(L.TITLE)
+    buildGeneral(root, layout)
+    for _, item in ipairs({
+        { L.SECTION_COMBAT, buildCombat },
+        { L.SECTION_MAP, buildMap },
+        { L.SECTION_ITEMS, buildItems },
+        { L.SECTION_CHAT, buildChat },
+        { L.CATEGORY_ERRORS_SOUND, buildSound },
+    }) do
+        local category, sublayout = native.RegisterVerticalLayoutSubcategory(root, item[1])
+        item[2](category, sublayout)
+    end
+    native.RegisterAddOnCategory(root)
+    return true
+end
+function Settings.Show()
+    if Settings.Initialize() then
+        native.OpenToCategory(root:GetID())
+    end
+end
+Settings.Toggle = Settings.Show

@@ -97,26 +97,3 @@ test("loot toasts missing and protected integrations fail closed with explicit r
         eq(original:IsEventRegistered("SHOW_LOOT_TOAST"), false)
     end, fixture)
 end)
-
-test("loot toast checkbox changes policy and confirmed reset refreshes it", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        local control
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if M.L.BLOCK_LOOT_TOASTS and region.text == M.L.BLOCK_LOOT_TOASTS then
-                    control = frame
-                end
-            end
-        end
-        assert(control, "Block loot toasts checkbox is available")
-        control:SetChecked(true)
-        control.scripts.OnClick(control)
-        eq(MurgleDB.interface.blockLootToasts, true)
-        eq(AlertFrame:IsEventRegistered("SHOW_LOOT_TOAST"), false)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(control:GetChecked(), false)
-        eq(AlertFrame:IsEventRegistered("SHOW_LOOT_TOAST"), true)
-    end, fixture)
-end)

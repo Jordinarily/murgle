@@ -146,33 +146,6 @@ test("repair refuses unknown service and repairability results independently", f
     end, fixture)
 end)
 
-test("personal repair checkbox persists and reset disables the installed hook", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        M.Settings.SelectCategory("LootVendors")
-        eq(type(M.L.AUTO_REPAIR), "string")
-        local control
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if region.text == M.L.AUTO_REPAIR then
-                    control = frame
-                end
-            end
-        end
-        assert(control, "personal repair checkbox must exist")
-        control:SetChecked(true)
-        control.scripts.OnClick(control)
-        eq(MurgleDB.lootVendors.autoRepair, true)
-        state.show(MerchantFrame)
-        eq(state.repairs, 1)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(control:GetChecked(), false)
-        state.show(MerchantFrame)
-        eq(state.repairs, 1)
-    end, fixture)
-end)
-
 local function guildFixture(M, state)
     fixture(M, state)
     state.allowed, state.limit, state.bank = true, 100, 100
@@ -290,48 +263,6 @@ test("guild preference alone stays inert and disabling it restores personal beha
         GetGuildBankMoney = nil
         state.show(MerchantFrame)
         eq(state.personalCalls, 1)
-    end, guildFixture)
-end)
-
-test("guild repair preference persists through its checkbox and reset", function()
-    UI.withAddon(function(M, state)
-        M.Settings.Show()
-        M.Settings.SelectCategory("LootVendors")
-        local control, repair
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if region.text == M.L.GUILD_REPAIR then
-                    control = frame
-                elseif region.text == M.L.AUTO_REPAIR then
-                    repair = frame
-                end
-            end
-        end
-        assert(control, "guild preference checkbox required")
-        assert(repair)
-        eq(control:IsShown(), false)
-        eq(state.hooks, 0)
-        repair:SetChecked(true)
-        repair.scripts.OnClick(repair)
-        eq(control:IsShown(), true)
-        control:SetChecked(true)
-        control.scripts.OnClick(control)
-        eq(MurgleDB.lootVendors.guildRepair, true)
-        repair:SetChecked(false)
-        repair.scripts.OnClick(repair)
-        eq(control:IsShown(), false)
-        eq(MurgleDB.lootVendors.guildRepair, true)
-        repair:SetChecked(true)
-        repair.scripts.OnClick(repair)
-        eq(control:IsShown(), true)
-        state.show(MerchantFrame)
-        eq(state.guildCalls, 1)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(control:GetChecked(), false)
-        eq(control:IsShown(), false)
-        state.show(MerchantFrame)
-        eq(state.guildCalls, 1)
     end, guildFixture)
 end)
 
@@ -462,35 +393,6 @@ test("repair and junk sale share a hook and unavailable sale does not block repa
     end, junkFixture)
 end)
 
-test("saved junk option initializes and checkbox reset leaves sale manual", function()
-    UI.withAddon(function(M, state)
-        eq(state.hooks, 1)
-        eq(#state.frames, 1)
-        M.Settings.Show()
-        M.Settings.SelectCategory("LootVendors")
-        local control
-        for _, frame in ipairs(state.frames) do
-            for _, region in ipairs(frame.regions) do
-                if region.text == M.L.SELL_JUNK then
-                    control = frame
-                end
-            end
-        end
-        assert(control, "sell junk checkbox required")
-        eq(control:GetChecked(), true)
-        state.show(MerchantFrame)
-        eq(state.sales, 1)
-        M.Settings.ConfirmReset()
-        StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(control:GetChecked(), false)
-        state.show(MerchantFrame)
-        eq(state.sales, 1)
-    end, function(M, state)
-        junkFixture(M, state)
-        MurgleDB = { lootVendors = { sellJunk = true } }
-    end)
-end)
-
 test("junk sale rechecks merchant context after repair changes it", function()
     UI.withAddon(function(M, state)
         enable(M)
@@ -510,4 +412,18 @@ test("junk sale rechecks merchant context after repair changes it", function()
         state.show(frame)
         eq(state.sales, 0)
     end, junkFixture)
+end)
+
+test("native repair setting persists and reset disables the installed merchant action", function()
+    UI.withAddon(function(M, state)
+        local setting = state:setting("lootVendors", "autoRepair")
+        setting:SetValue(true)
+        state.show(MerchantFrame)
+        eq(state.repairs, 1)
+        M.Settings.ConfirmReset()
+        StaticPopupDialogs.MURGLE_RESET.OnAccept()
+        eq(setting:GetValue(), false)
+        state.show(MerchantFrame)
+        eq(state.repairs, 1)
+    end, fixture)
 end)

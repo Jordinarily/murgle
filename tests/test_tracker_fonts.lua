@@ -134,29 +134,6 @@ test("tracker font missing API skips mutation and explicit apply can retry", fun
     end)
 end)
 
-test("tracker font controls persist size and reset restores default selection", function()
-    withFonts(function(M, state, line)
-        M.Settings.Show()
-        local choice
-        for _, frame in ipairs(state.frames) do
-            if frame.kind == "Button" then
-                for _, region in ipairs(frame.regions) do
-                    if region.text == "9" then
-                        choice = frame
-                    end
-                end
-            end
-        end
-        assert(choice, "tracker font size choice exists")
-        choice.scripts.OnClick(choice)
-        eq(MurgleDB.interface.trackerFontSize, 9)
-        eq(line.size, 9)
-        M.ResetDB()
-        eq(MurgleDB.interface.trackerFontSize, "default")
-        eq(line.size, 12)
-    end)
-end)
-
 test("tracker missing font object fails closed without partial writes", function()
     withFonts(function(M, state, line)
         ObjectiveTrackerHeaderFont = false

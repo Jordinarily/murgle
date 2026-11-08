@@ -97,31 +97,6 @@ test("quest sparkle disable preserves external graphics changes and explicit app
     end, true)
 end)
 
-test("quest sparkle settings are on Quests and reset restores native graphics", function()
-    withSparkles(function(M, values, _, ui)
-        M.Settings.Show()
-        M.Settings.SelectCategory("Quests")
-        eq(type(M.L.QUEST_SPARKLES), "string")
-        local control
-        for _, frame in ipairs(ui.frames) do
-            if frame.kind == "CheckButton" then
-                for _, region in ipairs(frame.regions) do
-                    if region.text == M.L.QUEST_SPARKLES then
-                        control = frame
-                    end
-                end
-            end
-        end
-        assert(control, "quest sparkle control")
-        control:SetChecked(true)
-        control.scripts.OnClick(control)
-        eq(values.OutlineEngineMode, "0")
-        eq(MurgleDB.quests.sparkles, true)
-        M.ResetDB()
-        eq(values.OutlineEngineMode, "2")
-    end)
-end)
-
 test("quest sparkle restoration handles graphics setters updating dependent CVars", function()
     withSparkles(function(M, values)
         values.OutlineEngineMode = "0"

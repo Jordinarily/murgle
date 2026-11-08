@@ -87,41 +87,6 @@ test("error filtering restores captured blacklist after global replacement", fun
     end, fixture)
 end)
 
-test("error settings persist modes and reset returns to important without startup UI", function()
-    UI.withAddon(function(M, state)
-        eq(#state.frames, 1)
-        M.Settings.Show()
-        local start = #state.frames
-        M.Settings.SelectCategory("ErrorsSound")
-        local all, hidden, important
-        for index, frame in ipairs(state.frames) do
-            if index > start and frame.kind == "Button" then
-                for _, region in ipairs(frame.regions) do
-                    if region.text == M.L.ALL then
-                        all = frame
-                    end
-                    if region.text == M.L.HIDDEN then
-                        hidden = frame
-                    end
-                    if region.text == M.L.IMPORTANT then
-                        important = frame
-                    end
-                end
-            end
-        end
-        assert(all and important and not hidden)
-        M.Errors.SetMode("hidden")
-        eq(MurgleDB.errors.mode, "all")
-        eq(UIErrorsFrame:IsEventRegistered("UI_ERROR_MESSAGE"), true)
-        all.scripts.OnClick(all)
-        eq(MurgleDB.errors.mode, "all")
-        eq(UIErrorsFrame:IsEventRegistered("UI_ERROR_MESSAGE"), true)
-        M.ResetDB()
-        eq(MurgleDB.errors.mode, "important")
-        eq(BLACK_LISTED_MESSAGE_TYPES[101], true)
-    end, fixture)
-end)
-
 test("missing error constants do not suppress unknown IDs or block other known filters", function()
     UI.withAddon(function(M)
         eq(BLACK_LISTED_MESSAGE_TYPES[101], nil)

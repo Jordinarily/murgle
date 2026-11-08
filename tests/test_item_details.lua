@@ -102,59 +102,12 @@ test("item details use the hovered item variant for vendor value", function()
     end)
 end)
 
-test("spell details remain independently opt-in and append a single native spell ID", function()
-    setup(function(D, tip, lines, saved)
-        D.ApplyAll()
-        local _, count = saved()
-        eq(count, 0)
+test("retired spell IDs cannot register callbacks from legacy saved settings", function()
+    setup(function(D, _, _, saved)
         MurgleDB.tooltip.spellDetails = true
         D.ApplyAll()
-        D.ApplyAll()
-        local _, registrations, callbacks = saved()
-        eq(registrations, 1)
-        eq(type(callbacks[1]), "function")
-        eq(callbacks[0], nil)
-        callbacks[1](tip, { id = 17 })
-        callbacks[1](tip, { id = 17 })
-        eq(#lines, 1)
-        eq(lines[1], "Spell ID: 17")
-        MurgleDB.tooltip.spellDetails = false
-        callbacks[1](tip, { id = 18 })
-        eq(#lines, 1)
-        MurgleDB.tooltip.itemDetails = true
-        D.ApplyAll()
-        local _, total, both = saved()
-        eq(total, 2)
-        both[0](tip, { id = 10 })
-        eq(lines[2], "Item ID: 10")
-        eq(lines[3], "Vendor each: 200c")
-    end)
-end)
-
-test("spell details ignore foreign tooltips and malformed IDs and fail closed without native spell support", function()
-    setup(function(D, tip, lines, saved)
-        MurgleDB.tooltip.spellDetails = true
-        Enum.TooltipDataType.Spell = nil
-        D.ApplyAll()
-        local _, count = saved()
+        local _, count, callbacks = saved()
         eq(count, 0)
-        Enum.TooltipDataType.Spell = 1
-        D.ApplyAll()
-        local _, _, callbacks = saved()
-        eq(type(callbacks[1]), "function")
-        callbacks[1]({}, { id = 17 })
-        for _, data in ipairs({
-            {},
-            { id = 0 },
-            { id = -1 },
-            { id = 1.5 },
-            { id = math.huge },
-            { id = "17" },
-            { id = 0 / 0 },
-        }) do
-            callbacks[1](tip, data)
-        end
-        callbacks[1](tip, nil)
-        eq(#lines, 0)
+        eq(callbacks[1], nil)
     end)
 end)

@@ -130,9 +130,6 @@ function Murgle.ApplyAllSettings()
     if Murgle.MarkedJunk then
         Murgle.MarkedJunk.ApplyAll()
     end
-    if Murgle.ItemOpening then
-        Murgle.ItemOpening.ApplyAll()
-    end
     if Murgle.Sound then
         Murgle.Sound.ApplyAll()
     end
@@ -144,6 +141,9 @@ function Murgle.ResetDB()
         Murgle.Interface.SetSpellQueueWindow(400)
     end
     Murgle.ApplyAllSettings()
+    if Murgle.Settings and Murgle.Settings.Refresh then
+        Murgle.Settings.Refresh()
+    end
 end
 
 local function slashCommand(message)
@@ -257,11 +257,11 @@ function Murgle.Initialize()
     if Murgle.MarkedJunk then
         Murgle.MarkedJunk.Initialize()
     end
-    if Murgle.ItemOpening then
-        Murgle.ItemOpening.Initialize()
-    end
     if Murgle.Sound then
         Murgle.Sound.Initialize()
+    end
+    if Murgle.Settings and Murgle.Settings.Initialize then
+        Murgle.Settings.Initialize()
     end
     SLASH_MURGLE1 = "/murgle"
     SlashCmdList.MURGLE = slashCommand

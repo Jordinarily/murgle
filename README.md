@@ -12,7 +12,15 @@ It removes unnecessary clutter, automates repetitive interactions and exposes us
 
 > Blizzard, just cleaner.
 
-![Murgle settings](https://raw.githubusercontent.com/Jordinarily/murgle/main/assets/screenshots/01-murgle-settings.png)
+Open **Settings → AddOns → Murgle**, or type `/murgle`.
+
+Options use Blizzard's standard controls and six sections: General (the Murgle
+root), Combat & Frames, Map & Quests, Items & Services, Chat & Tooltips, and
+Errors & Sound. Saved choices are preserved. **Reset Murgle** asks before
+restoring addon defaults; it leaves the independent native quest-level setting
+alone. Blizzard's Defaults action resets settings in the selected category.
+
+Screenshots of the revised settings are pending in-game verification.
 
 ---
 
@@ -28,7 +36,7 @@ Murgle has:
 - No external runtime libraries
 - No Ace3 or LibStub
 - No permanent polling loops
-- Settings UI created only when opened
+- Native settings controls instantiated by Blizzard when displayed
 
 Murgle prefers Blizzard's own APIs, CVars and UI elements wherever possible.
 
@@ -71,22 +79,19 @@ Remove the parts of the default UI you don't need while keeping Blizzard's under
 
 ### Small native conveniences
 
-The Convenience settings page adds optional controls to Blizzard's existing
-windows. All of these options start off.
+Options in Items & Services, Combat & Frames, and Map & Quests extend Blizzard's existing windows. These convenience options start off.
 
 - Alt-click a green weapon or armor item in Blizzard bags to Disenchant it.
   Requires Enchanting and works outside combat; blue and epic items and native
   destruction confirmations remain protected.
 - Train all available class spells using a button at class trainers.
-- Shift-click merchant items to buy quantities across stacks. With restocking
-  enabled, Alt-Shift-click saves a desired total quantity; the merchant's
-  Restock button shows the purchases and cost before you confirm.
+- Shift-click merchant items to buy quantities across stacks.
 - Open an unambiguous flight-master map directly, without choosing a flight.
-- Optionally confirm an already chosen loot roll, bind-on-pickup loot, or
-  replacing an enchant. These are separate options with Shift/combat bypass.
+- Optionally skip confirmation for an already chosen loot roll or bind-on-pickup
+  loot. These are separate options with Shift/combat bypass. Enchant replacement
+  confirmations remain manual.
 - Warn about lower spell ranks on visible Blizzard action buttons without
   changing them, and mark a quest reward with the highest total vendor value.
-- Open Blizzard's click-casting settings to configure your own dispel bindings.
 
 Bulk purchases use ordinary gold offers and full vendor-pack quantities, and
 stop if merchant, inventory or money information changes unexpectedly. They
@@ -103,10 +108,8 @@ Alt starts off. Each modifier can use pages 1–6 or remain off. Ctrl takes prio
 over Shift, then Alt. The displayed page number follows the actions shown.
 
 Selected modifiers temporarily route the main bar's existing unmodified keys
-to those actions; saved bindings remain unchanged. Held modifiers take priority
-over native pages 2–6; releasing returns to the native selected page. If another
-addon takes ownership of paging attributes, Murgle yields and resumes on a later
-state transition only after those attributes are removed. Forms without a native
+to those actions; saved bindings remain unchanged. Manual native pages 2–6 suspend modifier paging;
+select page 1 to resume. Murgle yields to foreign paging attributes. Forms without a native
 bonus bar can use paging. Actual bonus, vehicle, override and other special bars remain
 native. Setup and disabling wait until combat ends. Old paging settings do not
 automatically enable this repaired version.
@@ -115,14 +118,11 @@ automatically enable this repaired version.
 
 ### More native options
 
-- **Quests:** Show native quest levels uses WoW's existing quest-list and text setting.
-- **Items:** Optional equipped-ammunition totals above the backpack button, plus item IDs and per-item vendor values in the main Blizzard tooltip.
-- **Items:** Enable manual vendor marks, pick up an eligible item, then click **Mark cursor item**. Marks apply to that item type. Return it to your bag, open a merchant, then use **Sell marked** on the Items page to review and confirm up to 12 stacks. Equipment, bags, quest items, bound/refundable items and qualities above uncommon are excluded. Hold Shift to bypass selling. Clearing marks and Reset Murgle remove the saved marks; normal grey-junk automation stays separate.
+- **Map & Quests:** Show native quest levels uses WoW's existing quest-list and text setting.
+- **Items & Services:** Optional equipped-ammunition totals above the backpack button, plus item IDs and per-item vendor values in the main Blizzard tooltip.
 
-- **Items:** Containers use Blizzard’s normal manual opening. Automatic container opening was removed after blocked-action reports.
-- **Items:** Use new quest-starting items opens direct quest offers from newly acquired items. You accept the quest yourself. Already-carried items, ordinary quest items and items with use spells remain manual; declined offers do not repeatedly reopen.
+- Containers and quest-starting items use Blizzard’s normal manual item-use path. Automatic item use was removed after blocked-action reports.
 
-Both opening options pause during combat, casting and other item interactions. Hold Shift to pause. No polling or native preference changes.
 
 Item feature toggles start off. Missing or restricted native settings remain unavailable.
 
@@ -233,7 +233,7 @@ Adjust WoW's native Spell Queue Window directly from Murgle.
 - Built-in help explaining how to tune the value
 - No continuous latency monitoring
 
-Auto-detect samples World latency once, adds 150 ms, rounds to the nearest 10 ms and caps the suggestion at 400 ms.
+Suggest from latency samples World latency once, adds 150 ms, rounds to the nearest 10 ms and caps the suggestion at 400 ms.
 
 It is intended as a starting point for manual adjustment rather than an automatically enforced value.
 
@@ -281,7 +281,6 @@ Control where Blizzard tooltips appear and reduce combat clutter.
 - Left of cursor
 - Right of cursor
 - At cursor
-- Optionally show spell IDs in the main Blizzard spell tooltip
 - Hide unit tooltips during combat
 - Hide object tooltips during combat
 - Hide corpse tooltips during combat
