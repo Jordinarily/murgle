@@ -702,30 +702,27 @@ test("enabled paging can always be switched off if native availability changes",
     end)
 end)
 
-test("Items page exposes independent default-off item opening controls and reset", function()
+test("Items page omits unsafe container opening and retains quest starter control", function()
     UI.withAddon(function(M, state)
+        MurgleDB.lootVendors.openClams = true
         M.Settings.Show()
         M.Settings.SelectCategory("Items")
-        eq(MurgleDB.lootVendors.openClams, false)
         eq(MurgleDB.automation.useQuestStarters, false)
-        local found = {}
+        local starter
         for _, frame in ipairs(state.frames) do
-            if
-                frame.caption
-                and (frame.caption.text == M.L.OPEN_CONTAINERS or frame.caption.text == M.L.USE_QUEST_STARTERS)
-            then
-                found[frame.caption.text] = frame
-                eq(frame:GetChecked(), false)
-                frame:SetChecked(true)
-                frame.scripts.OnClick(frame)
+            if frame.caption then
+                assert(frame.caption.text ~= "Automatically open containers")
+                if frame.caption.text == M.L.USE_QUEST_STARTERS then
+                    starter = frame
+                end
             end
         end
-        assert(found[M.L.OPEN_CONTAINERS] and found[M.L.USE_QUEST_STARTERS])
-        eq(MurgleDB.lootVendors.openClams, true)
+        assert(starter)
+        starter:SetChecked(true)
+        starter.scripts.OnClick(starter)
         eq(MurgleDB.automation.useQuestStarters, true)
         M.Settings.ConfirmReset()
         StaticPopupDialogs.MURGLE_RESET.OnAccept()
-        eq(MurgleDB.lootVendors.openClams, false)
         eq(MurgleDB.automation.useQuestStarters, false)
     end)
 end)

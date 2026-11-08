@@ -144,37 +144,36 @@ local function withOpening(fn)
     end)
 end
 
-test("item opening disabled startup creates no frame or work", function()
+test("legacy container toggle cannot register events or use a container", function()
     withOpening(function(M, s)
+        s.items[0] = { s:clam() }
+        C_Container.UseContainerItem = function()
+            error("blocked container use must never be attempted")
+        end
+        s:enable(true, false)
         M.ItemOpening.Initialize()
         eq(#s.frames, 0)
         eq(#s.uses, 0)
     end)
 end)
-test("container opening accepts arbitrary loot containers and processes one per event", function()
+test("quest automation never opens containers with a saved legacy toggle", function()
     withOpening(function(_, s)
-        s:enable(true)
-        s.items[0] =
-            { s:clam(987654, "arbitrary"), s:clam(5523), s:clam(5524, "B"), s:clam(7973, "C"), s:clam(15874, "D") }
-        for n = 1, 5 do
-            s:fire(n == 1 and "BAG_UPDATE_DELAYED" or "LOOT_CLOSED")
-            eq(#s.uses, n)
+        s:enable(true, true)
+        s.items[0] = { s:clam() }
+        C_Container.UseContainerItem = function()
+            error("blocked container use must never be attempted")
         end
         s:fire("BAG_UPDATE_DELAYED")
-        eq(#s.uses, 5, "refused unchanged containers never retried")
-        eq(s.uses[1].slot, 1)
+        s:fire("LOOT_CLOSED")
+        eq(#s.uses, 0)
     end)
 end)
-test("clam stack continues after successful count changes but not duplicate events", function()
-    withOpening(function(_, s)
-        s:enable(true)
-        s.items[0] = { s:clam(nil, nil, 2) }
-        s:fire("BAG_UPDATE_DELAYED")
-        s:fire("BAG_UPDATE_DELAYED")
-        eq(#s.uses, 1)
-        s.items[0][1].count = 1
-        s:fire("LOOT_CLOSED")
-        eq(#s.uses, 2)
+
+test("item opening disabled startup creates no frame or work", function()
+    withOpening(function(M, s)
+        M.ItemOpening.Initialize()
+        eq(#s.frames, 0)
+        eq(#s.uses, 0)
     end)
 end)
 for _, guard in ipairs({
@@ -192,8 +191,8 @@ for _, guard in ipairs({
 }) do
     test("item opening pauses for " .. guard .. " and resumes from a native event", function()
         withOpening(function(_, s)
-            s:enable(true)
-            s.items[0] = { s:clam() }
+            s:enable(false, true)
+            s.items[0] = { s:starter() }
             s[guard] = true
             s:fire("BAG_UPDATE_DELAYED")
             eq(#s.uses, 0)
@@ -203,22 +202,6 @@ for _, guard in ipairs({
         end)
     end)
 end
-test("clams require unlocked loot metadata auto loot and four free general slots", function()
-    withOpening(function(_, s)
-        s:enable(true)
-        s.items[0] = { s:clam() }
-        for _, block in ipairs({ "locked", "noLoot", "noAutoLoot", "full", "loot" }) do
-            local i = s.items[0][1]
-            i.locked, i.hasLoot = block == "locked", block ~= "noLoot"
-            s.autoLoot, s.free, s.loot = block ~= "noAutoLoot", block == "full" and 0 or 8, block == "loot" and 1 or 0
-            s:fire("BAG_UPDATE_DELAYED")
-            eq(#s.uses, 0)
-        end
-        s.loot = 0
-        s:fire("LOOT_CLOSED")
-        eq(#s.uses, 1)
-    end)
-end)
 test("quest starters observe a baseline then open new offers only once without accepting", function()
     withOpening(function(_, s)
         s.items[0] = { s:starter(900, "old") }
@@ -281,34 +264,10 @@ test("disabling unregisters all events and re-enable does not reopen old quests"
     end)
 end)
 
-test("item opening waits for loot closure and handles synchronous event reentry", function()
-    withOpening(function(_, s)
-        s:enable(true)
-        s.items[0] = { s:clam(), s:clam(7973, "second") }
-        s.onUse = function()
-            s:fire("BAG_UPDATE_DELAYED")
-        end
-        s:fire("BAG_UPDATE_DELAYED")
-        s:fire("BAG_UPDATE_DELAYED")
-        eq(#s.uses, 1)
-        s:fire("LOOT_CLOSED")
-        eq(#s.uses, 2)
-    end)
-end)
-test("new quest option does not inherit old items observed with clams enabled", function()
-    withOpening(function(_, s)
-        s:enable(true, false)
-        s.items[0] = { s:starter() }
-        s:fire("BAG_UPDATE_DELAYED")
-        s:enable(true, true)
-        s:fire("BAG_UPDATE_DELAYED")
-        eq(#s.uses, 0)
-    end)
-end)
 test("item use revalidates GUID immediately before acting", function()
     withOpening(function(_, s)
-        s:enable(true)
-        s.items[0] = { s:clam() }
+        s:enable(false, true)
+        s.items[0] = { s:starter() }
         local reads = 0
         s.onRead = function()
             reads = reads + 1
@@ -327,16 +286,6 @@ test("missing essential APIs cannot create an automation frame", function()
         end)
         eq(#s.frames, 0)
         eq(#s.uses, 0)
-    end)
-end)
-test("missing quest API leaves starters manual while clams still work", function()
-    withOpening(function(_, s)
-        C_Container.GetContainerItemQuestInfo = nil
-        s:enable(true, true)
-        s.items[0] = { s:starter(), s:clam() }
-        s:fire("BAG_UPDATE_DELAYED")
-        eq(#s.uses, 1)
-        eq(s.uses[1].id, 5523)
     end)
 end)
 
@@ -373,11 +322,26 @@ test("pending quest data requests once and resumes on item data completion", fun
         eq(#s.uses, 1)
     end)
 end)
-test("Shift release resumes pending items without an unrelated bag event", function()
+
+test("quest item use waits for closure and handles synchronous event reentry", function()
     withOpening(function(_, s)
-        s:enable(true)
+        s:enable(false, true)
+        s.items[0] = { s:starter(), s:starter(901, "second", 43) }
+        s.onUse = function()
+            s:fire("BAG_UPDATE_DELAYED")
+        end
+        s:fire("BAG_UPDATE_DELAYED")
+        s:fire("BAG_UPDATE_DELAYED")
+        eq(#s.uses, 1)
+        s:fire("QUEST_FINISHED")
+        eq(#s.uses, 2)
+    end)
+end)
+test("quest starter Shift release resumes without an unrelated bag event", function()
+    withOpening(function(_, s)
+        s:enable(false, true)
         s.shift = true
-        s.items[0] = { s:clam() }
+        s.items[0] = { s:starter() }
         s:fire("BAG_UPDATE_DELAYED")
         eq(#s.uses, 0)
         s.shift = false
@@ -385,29 +349,11 @@ test("Shift release resumes pending items without an unrelated bag event", funct
         eq(#s.uses, 1)
     end)
 end)
-
-test("container opening leaves ordinary items and missing loot metadata alone", function()
+test("missing quest metadata API leaves new items manual", function()
     withOpening(function(_, s)
-        s:enable(true)
-        local plain, unknown = s:clam(999, "plain"), s:clam(1000, "unknown")
-        plain.hasLoot, unknown.hasLoot = false, nil
-        s.items[0] = { plain, unknown, s:clam(1001, "container") }
-        s:fire("BAG_UPDATE_DELAYED")
-        eq(#s.uses, 1)
-        eq(s.uses[1].id, 1001)
-    end)
-end)
-test("container loot eligibility is revalidated before item use", function()
-    withOpening(function(_, s)
-        s:enable(true)
-        s.items[0] = { s:clam(5523) }
-        local reads = 0
-        s.onRead = function()
-            reads = reads + 1
-            if reads == 2 then
-                s.items[0][1].hasLoot = false
-            end
-        end
+        C_Container.GetContainerItemQuestInfo = nil
+        s:enable(true, true)
+        s.items[0] = { s:starter(), s:clam() }
         s:fire("BAG_UPDATE_DELAYED")
         eq(#s.uses, 0)
     end)

@@ -7,9 +7,9 @@ local ItemOpening = {}
 Murgle.ItemOpening = ItemOpening
 local events, scanning, waiting, baseline, questEnabled
 local requestedData = {}
-local seen, pendingQuests, attemptedQuests, attemptedContainers = {}, {}, {}, {}
--- Use the native hasLoot flag for all carried loot containers, not an ID list.
--- openClams remains the saved key so existing user choices survive the rename.
+local seen, pendingQuests, attemptedQuests = {}, {}, {}
+-- Container auto-use was removed after live blocked-action reports.
+-- The legacy openClams saved flag is deliberately ignored.
 local eventNames = {
     "BAG_UPDATE_DELAYED",
     "ITEM_DATA_LOAD_RESULT",
@@ -47,7 +47,7 @@ local interactions = {
     "StaticPopup4",
 }
 local function enabled()
-    return MurgleDB.lootVendors.openClams == true or MurgleDB.automation.useQuestStarters == true
+    return MurgleDB.automation.useQuestStarters == true
 end
 local function available()
     return type(CreateFrame) == "function"
@@ -104,16 +104,6 @@ end
 local function validCount(value)
     return type(value) == "number" and value >= 1 and value < math.huge and value == math.floor(value)
 end
-local function containerReady(info, guid, free)
-    return MurgleDB.lootVendors.openClams == true
-        and info.hasLoot == true
-        and free >= 4
-        and attemptedContainers[guid] ~= info.stackCount
-        and type(GetCVarBool) == "function"
-        and GetCVarBool("autoLootDefault") == true
-        and type(IsModifiedClick) == "function"
-        and IsModifiedClick("AUTOLOOTTOGGLE") == false
-end
 local function questAt(bag, slot, info, guid)
     if
         MurgleDB.automation.useQuestStarters ~= true
@@ -158,14 +148,8 @@ local function scan()
         return
     end
     scanning = true
-    local current, candidates, free = {}, {}, 0
+    local current, candidates = {}, {}
     for bag = 0, NUM_BAG_SLOTS do
-        if type(C_Container.GetContainerNumFreeSlots) == "function" then
-            local count, family = C_Container.GetContainerNumFreeSlots(bag)
-            if type(count) == "number" and count >= 0 and count <= 1000 and family == 0 then
-                free = free + count
-            end
-        end
         local slots = C_Container.GetContainerNumSlots(bag)
         if type(slots) == "number" and slots >= 0 and slots <= 1000 and slots == math.floor(slots) then
             for slot = 1, slots do
@@ -177,7 +161,7 @@ local function scan()
                         if questEnabled and not baseline and not seen[guid] then
                             pendingQuests[guid] = true
                         end
-                        if info.isLocked == false and (info.hasLoot == true or pendingQuests[guid]) then
+                        if info.isLocked == false and pendingQuests[guid] then
                             candidates[#candidates + 1] = { bag = bag, slot = slot, info = info, guid = guid }
                         end
                     end
@@ -191,19 +175,13 @@ local function scan()
             pendingQuests[guid] = nil
         end
     end
-    for guid in pairs(attemptedContainers) do
-        if not current[guid] then
-            attemptedContainers[guid] = nil
-        end
-    end
     if waiting or not safe() then
         scanning = false
         return
     end
     for _, row in ipairs(candidates) do
         local questID = questAt(row.bag, row.slot, row.info, row.guid)
-        local container = containerReady(row.info, row.guid, free)
-        if container or questID then
+        if questID then
             -- Re-read immediately before use; never act on a moved/replaced item.
             local info = C_Container.GetContainerItemInfo(row.bag, row.slot)
             if
@@ -212,12 +190,8 @@ local function scan()
                 and info.itemID == row.info.itemID
                 and info.stackCount == row.info.stackCount
                 and info.isLocked == false
-                and (not container or info.hasLoot == true)
                 and guidAt(row.bag, row.slot) == row.guid
             then
-                if container then
-                    attemptedContainers[row.guid] = info.stackCount
-                end
                 if questID then
                     attemptedQuests[questID], pendingQuests[row.guid] = true, nil
                 end
@@ -275,7 +249,7 @@ function ItemOpening.ApplyAll()
                 events:UnregisterEvent(event)
             end
         end
-        seen, pendingQuests, attemptedContainers, requestedData = {}, {}, {}, {}
+        seen, pendingQuests, requestedData = {}, {}, {}
         waiting, baseline = nil, true
         return
     end

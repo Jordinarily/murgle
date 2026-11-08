@@ -679,13 +679,11 @@ local function itemsPage()
     local ammo = checkbox(page, L.AMMO_COUNT, "ammoCount", 1, Murgle.Ammo.ApplyAll, "lootVendors")
     local details = checkbox(page, L.ITEM_DETAILS, "itemDetails", 2, Murgle.ItemDetails.ApplyAll, "tooltip")
     local junk = checkbox(page, L.MARKED_JUNK, "markedJunk", 3, Murgle.MarkedJunk.ApplyAll, "lootVendors")
-    local containers = checkbox(page, L.OPEN_CONTAINERS, "openClams", 4, Murgle.ItemOpening.ApplyAll, "lootVendors")
     local starters =
-        checkbox(page, L.USE_QUEST_STARTERS, "useQuestStarters", 5, Murgle.ItemOpening.ApplyAll, "automation")
-    for row, control in ipairs({ ammo, details, junk, containers, starters }) do
+        checkbox(page, L.USE_QUEST_STARTERS, "useQuestStarters", 4, Murgle.ItemOpening.ApplyAll, "automation")
+    for row, control in ipairs({ ammo, details, junk, starters }) do
         control:SetPoint("TOPLEFT", 0, -36 - (row - 1) * 24)
     end
-    helpButton(page, L.OPEN_CONTAINERS_HELP, containers.caption)
     helpButton(page, L.USE_QUEST_STARTERS_HELP, starters.caption)
     helpButton(page, L.AMMO_COUNT_HELP, ammo.caption)
     helpButton(page, L.ITEM_DETAILS_HELP, details.caption)
@@ -709,7 +707,6 @@ local function itemsPage()
     sell:SetPoint("TOPLEFT", 0, -220)
     status:SetPoint("TOPLEFT", 0, -265)
     function page:Refresh()
-        containers:SetChecked(MurgleDB.lootVendors.openClams == true)
         starters:SetChecked(MurgleDB.automation.useQuestStarters == true)
         ammo:SetChecked(MurgleDB.lootVendors.ammoCount == true)
         details:SetChecked(MurgleDB.tooltip.itemDetails == true)
