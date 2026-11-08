@@ -712,7 +712,7 @@ test("Items page exposes independent default-off item opening controls and reset
         for _, frame in ipairs(state.frames) do
             if
                 frame.caption
-                and (frame.caption.text == M.L.OPEN_CLAMS or frame.caption.text == M.L.USE_QUEST_STARTERS)
+                and (frame.caption.text == M.L.OPEN_CONTAINERS or frame.caption.text == M.L.USE_QUEST_STARTERS)
             then
                 found[frame.caption.text] = frame
                 eq(frame:GetChecked(), false)
@@ -720,7 +720,7 @@ test("Items page exposes independent default-off item opening controls and reset
                 frame.scripts.OnClick(frame)
             end
         end
-        assert(found[M.L.OPEN_CLAMS] and found[M.L.USE_QUEST_STARTERS])
+        assert(found[M.L.OPEN_CONTAINERS] and found[M.L.USE_QUEST_STARTERS])
         eq(MurgleDB.lootVendors.openClams, true)
         eq(MurgleDB.automation.useQuestStarters, true)
         M.Settings.ConfirmReset()

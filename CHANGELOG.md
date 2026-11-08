@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Expanded automatic opening from clams to all carried items Blizzard identifies as loot containers. Existing saved toggle choices and combat/interaction safeguards are preserved; unlocking and confirmations remain manual.
+
 ## 1.3.5 — 2026-11-07
 
 - Restored action paging to the v1.3.3 behavior after fixing the v1.3.4 secure-snippet regression; manual pages 2-6 suspend modifier paging until page 1 is selected.

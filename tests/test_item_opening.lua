@@ -104,7 +104,7 @@ local function withOpening(fn)
                     itemID = i.id,
                     stackCount = i.count or 1,
                     isLocked = i.locked == true,
-                    hasLoot = i.hasLoot ~= false,
+                    hasLoot = i.hasLoot == true,
                 }
             end,
             GetContainerItemQuestInfo = function(bag, slot)
@@ -135,7 +135,7 @@ local function withOpening(fn)
             M.ItemOpening.ApplyAll()
         end
         function s:clam(id, guid, count)
-            return { id = id or 5523, guid = guid or "clam-A", count = count or 1 }
+            return { id = id or 5523, guid = guid or "clam-A", count = count or 1, hasLoot = true }
         end
         function s:starter(id, guid, questID)
             return { id = id or 900, guid = guid or "quest-A", quest = { questID = questID or 42, isActive = false } }
@@ -151,17 +151,18 @@ test("item opening disabled startup creates no frame or work", function()
         eq(#s.uses, 0)
     end)
 end)
-test("clam opening accepts only the four explicit IDs and processes one per event", function()
+test("container opening accepts arbitrary loot containers and processes one per event", function()
     withOpening(function(_, s)
         s:enable(true)
-        s.items[0] = { s:clam(999), s:clam(5523), s:clam(5524, "B"), s:clam(7973, "C"), s:clam(15874, "D") }
-        for n = 1, 4 do
+        s.items[0] =
+            { s:clam(987654, "arbitrary"), s:clam(5523), s:clam(5524, "B"), s:clam(7973, "C"), s:clam(15874, "D") }
+        for n = 1, 5 do
             s:fire(n == 1 and "BAG_UPDATE_DELAYED" or "LOOT_CLOSED")
             eq(#s.uses, n)
         end
         s:fire("BAG_UPDATE_DELAYED")
-        eq(#s.uses, 4, "refused unchanged clams never retried")
-        eq(s.uses[1].slot, 2)
+        eq(#s.uses, 5, "refused unchanged containers never retried")
+        eq(s.uses[1].slot, 1)
     end)
 end)
 test("clam stack continues after successful count changes but not duplicate events", function()
@@ -382,5 +383,32 @@ test("Shift release resumes pending items without an unrelated bag event", funct
         s.shift = false
         s:fire("MODIFIER_STATE_CHANGED", "LSHIFT", 0)
         eq(#s.uses, 1)
+    end)
+end)
+
+test("container opening leaves ordinary items and missing loot metadata alone", function()
+    withOpening(function(_, s)
+        s:enable(true)
+        local plain, unknown = s:clam(999, "plain"), s:clam(1000, "unknown")
+        plain.hasLoot, unknown.hasLoot = false, nil
+        s.items[0] = { plain, unknown, s:clam(1001, "container") }
+        s:fire("BAG_UPDATE_DELAYED")
+        eq(#s.uses, 1)
+        eq(s.uses[1].id, 1001)
+    end)
+end)
+test("container loot eligibility is revalidated before item use", function()
+    withOpening(function(_, s)
+        s:enable(true)
+        s.items[0] = { s:clam(5523) }
+        local reads = 0
+        s.onRead = function()
+            reads = reads + 1
+            if reads == 2 then
+                s.items[0][1].hasLoot = false
+            end
+        end
+        s:fire("BAG_UPDATE_DELAYED")
+        eq(#s.uses, 0)
     end)
 end)

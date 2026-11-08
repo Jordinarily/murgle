@@ -13,8 +13,8 @@ local EN = {
     PAGING_NATIVE_RETURN = "Hold a selected modifier for its page; release returns to page 1. Native pages 2-6 suspend modifier paging.",
 
     CATEGORY_ITEMS = "Items",
-    OPEN_CLAMS = "Automatically open clams",
-    OPEN_CLAMS_HELP = "Opens Small Barnacled, Thick-shelled, Big-mouth and Soft-shelled Clams in carried bags, one at a time. Requires native Auto Loot and four free general bag slots. Pauses in combat, while casting, during other item interactions and while Shift is held. Other containers stay manual. Unchanged failed items are not retried.",
+    OPEN_CONTAINERS = "Automatically open containers",
+    OPEN_CONTAINERS_HELP = "Opens carried items that Blizzard identifies as loot containers, one at a time. Requires native Auto Loot and four free general bag slots. Pauses in combat, while casting, during other item interactions and while Shift is held. Does not unlock containers or accept confirmation dialogs. Unchanged failed items are not retried.",
     USE_QUEST_STARTERS = "Use new quest-starting items",
     USE_QUEST_STARTERS_HELP = "Uses newly acquired items that Blizzard identifies as offering an unaccepted, uncompleted quest, outside combat and other interactions. The quest offer stays yours to accept. Items already carried when enabled, ordinary quest items and items with use spells remain manual. Each quest is attempted once per session; declined offers do not reopen. Hold Shift to pause.",
     NATIVE_UNAVAILABLE = "Unavailable",

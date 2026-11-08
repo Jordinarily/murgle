@@ -51,7 +51,7 @@ Murgle.DEFAULTS = {
         worldRefreshMode = "hideOnly",
     },
     lootVendors = {
-        openClams = false,
+        openClams = false, -- Legacy saved key for Automatically open containers.
         ammoCount = false,
         markedJunk = false,
         markedItems = {},
