@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.8 — 2026-11-08
+
+- Moved Murgle options into Blizzard Settings > AddOns with native controls and preserved saved choices.
+- Spell Queue Window now displays its current value in milliseconds.
+- Removed vendor-marking and restock controls, the click-casting shortcut, bulk sound buttons and spell-ID tooltips.
+- Removed automatic quest-starter item use; containers and quest starters use the native manual item-use path. The intermittent inventory/Settings blocked-action report remains under investigation.
+
 ## 1.3.7 — 2026-11-08
 
 - Removed automatic container opening after blocked-action reports. Containers use Blizzard's normal manual opening; old saved container settings are inert.
