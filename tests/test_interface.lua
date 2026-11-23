@@ -17,10 +17,16 @@ local function withInterface(fn)
         return f
     end
     local menu, bags = frame(true), frame(false)
+    local bar1 = frame(true)
+    bar1.scripts = {}
+    function bar1:HookScript(name, fn)
+        self.scripts[name] = fn
+    end
     local pending, combat = {}, false
     H.withGlobals({
         MicroMenu = menu,
         BagsBar = bags,
+        MainStatusTrackingBarContainer = bar1,
         MurgleDB = { interface = {} },
         CreateFrame = function()
             error("interface must not create event frames")
@@ -39,7 +45,7 @@ local function withInterface(fn)
         H.loadAddonFile("Modules/Interface.lua", M)
         fn(M, menu, bags, pending, function(value)
             combat = value
-        end)
+        end, bar1)
     end)
 end
 
@@ -137,6 +143,37 @@ test("disabled interface options do not queue work during combat", function()
         setCombat(true)
         M.Interface.Initialize()
         eq(next(pending), nil)
+    end)
+end)
+
+test("Status Bar 1 hides MainStatusTrackingBarContainer and re-hides on native show", function()
+    withInterface(function(M, _, _, pending, setCombat, bar1)
+        eq(bar1.shown, true)
+        MurgleDB.interface.hideStatusBar1 = true
+        M.Interface.ApplyStatusBar1()
+        eq(bar1.shown, false)
+        eq(bar1.hides, 1)
+
+        -- Repeated apply preserves original visibility
+        M.Interface.ApplyStatusBar1()
+        eq(bar1.shown, false)
+
+        -- Native re-show triggers OnShow hook which re-hides it
+        assert(bar1.scripts.OnShow, "needs OnShow hook")
+        bar1.shown = true
+        bar1.scripts.OnShow(bar1)
+        eq(bar1.shown, false)
+
+        -- Combat deferral
+        setCombat(true)
+        MurgleDB.interface.hideStatusBar1 = false
+        M.Interface.ApplyStatusBar1()
+        eq(bar1.shown, false, "change must defer in combat")
+        setCombat(false)
+        for _, fn in pairs(pending) do
+            fn()
+        end
+        eq(bar1.shown, true, "restores original shown state out of combat")
     end)
 end)
 
@@ -567,22 +604,6 @@ test("late micro menu and bags remain eligible for explicit startup retry", func
         eq(menu.shown, false)
         eq(menu.hides, 1)
         eq(bags.hides, 1)
-    end)
-end)
-
-test("macro names hide once and restore captured FontStrings", function()
-    local name = H.newVisibilityFrame(true)
-    H.withGlobals({ ActionButton1 = { Name = name } }, function()
-        UI.withAddon(function(M)
-            MurgleDB.interface.hideMacroNames = true
-            M.Interface.ApplyMacroNames()
-            eq(name.shown, false)
-            local changes = name.changes
-            M.Interface.ApplyMacroNames()
-            eq(name.changes, changes)
-            M.ResetDB()
-            eq(name.shown, true)
-        end)
     end)
 end)
 

@@ -14,13 +14,9 @@ It removes unnecessary clutter, automates repetitive interactions and exposes us
 
 Open **Settings → AddOns → Murgle**, or type `/murgle`.
 
-Options use Blizzard's standard controls and six sections: General (the Murgle
-root), Combat & Frames, Map & Quests, Items & Services, Chat & Tooltips, and
-Errors & Sound. Saved choices are preserved. **Reset Murgle** asks before
-restoring addon defaults; it leaves the independent native quest-level setting
-alone. Blizzard's Defaults action resets settings in the selected category.
-
-Screenshots of the revised settings are pending in-game verification.
+Options use Blizzard's standard controls baked directly into native settings across five focused categories:
+**Combat & Frames**, **Map & Quests**, **Items & Services**, **Chat & Tooltips**, and **Errors & Sound**.
+Saved choices are preserved. Blizzard's Defaults action resets settings in the selected category.
 
 ---
 
@@ -61,275 +57,107 @@ Remove the parts of the default UI you don't need while keeping Blizzard's under
 - Hide Micro Menu
 - Hide Bag Bar
 - Move the combined bag window by dragging its title and remember its position
+- Hide Status Bar 1
 - Hide XP bar
-- Hide macro names
-- Fade action bars during combat, including 0% opacity to hide them visually
-- Hide totem timers
 - Hide Talking Head
 - Hide Boss Banner
 - Hide large zone text
 - Hide Objective Tracker headers
-- Adjust Objective Tracker font size
 - Control Objective Tracker visibility
 - Show the buff collapse arrow only on hover
-- Block new help tips
-- Block standard loot-reward toasts
 
 ---
 
-### Small native conveniences
+### Combat & Frames
 
-Options in Items & Services, Combat & Frames, and Map & Quests extend Blizzard's existing windows. These convenience options start off.
+Keep combat clean, responsive, and uncluttered.
 
-- Alt-click a green weapon or armor item in Blizzard bags to Disenchant it.
-  Requires Enchanting and works outside combat; blue and epic items and native
-  destruction confirmations remain protected.
-- Train all available class spells using a button at class trainers.
-- Shift-click merchant items to buy quantities across stacks.
-- Open an unambiguous flight-master map directly, without choosing a flight.
-- Optionally skip confirmation for an already chosen loot roll or bind-on-pickup
-  loot. These are separate options with Shift/combat bypass. Enchant replacement
-  confirmations remain manual.
-- Warn about lower spell ranks on visible Blizzard action buttons without
-  changing them, and mark a quest reward with the highest total vendor value.
-
-Bulk purchases use ordinary gold offers and full vendor-pack quantities, and
-stop if merchant, inventory or money information changes unexpectedly. They
-never buy merely because you opened a merchant. Lockbox shortcuts and automatic
-acceptance of disenchant destruction warnings are not included.
-
----
-
-### Hold-to-page action bars
-
-**Action paging** starts off. Enable it to start the main bar on page 1:
-hold **Shift for page 2**, then release for page 1. Ctrl defaults to page 3;
-Alt starts off. Each modifier can use pages 1–6 or remain off. Ctrl takes priority
-over Shift, then Alt. The displayed page number follows the actions shown.
-
-Selected modifiers temporarily route the main bar's existing unmodified keys
-to those actions; saved bindings remain unchanged. Manual native pages 2–6 suspend modifier paging;
-select page 1 to resume. Murgle yields to foreign paging attributes. Forms without a native
-bonus bar can use paging. Actual bonus, vehicle, override and other special bars remain
-native. Setup and disabling wait until combat ends. Old paging settings do not
-automatically enable this repaired version.
-
-* * *
-
-### More native options
-
-- **Map & Quests:** Show native quest levels uses WoW's existing quest-list and text setting.
-- **Items & Services:** Optional equipped-ammunition totals above the backpack button, plus item IDs and per-item vendor values in the main Blizzard tooltip.
-
-- Containers and quest-starting items use Blizzard’s normal manual item-use path. Automatic item use was removed after blocked-action reports.
-
-
-Item feature toggles start off. Missing or restricted native settings remain unavailable.
-
-* * *
-
-### A cleaner minimap
-
-Keep Blizzard's minimap, but strip away unwanted artwork and buttons.
-
-- Square Minimap with a subtle border
-- Hide minimap rim
-- Hide day/night artwork
-- Hide minimap header
-- Hide zone text
-- Hide clock
-- Hide calendar
-- Hide tracking button
-- Hide zoom buttons
-- Hide addon compartment
-
-Square mode uses the existing Blizzard minimap rather than replacing it.
-
-![Blizzard minimap before and with Murgle](https://raw.githubusercontent.com/Jordinarily/murgle/main/assets/screenshots/04-minimap-before-after.png)
-
----
-
-### Compact Blizzard unit frames
-
-Murgle cleans up Blizzard's existing secure unit frames instead of replacing them.
-
-#### Player
-
-- Compact Player Frame
-- Remove portrait and decorative artwork
-- Hide player level
-- Hide resting artwork and animation
-- Optional player-name hiding
-
-#### Target
-
-- Compact Target Frame
-- Cleaner artwork and presentation
-- Optional enemy-player faction icon filtering
-
-#### Target of Target
-
-- Compact Target-of-Target frame
-
-Native health, power and unit-frame interactions remain intact.
-
-![Blizzard unit frames before and with Murgle; player name redacted](https://raw.githubusercontent.com/Jordinarily/murgle/main/assets/screenshots/03-unit-frames-before-after.png)
-
----
-
-### Native nameplate visibility
-
-Control when Blizzard's own nameplates are shown without processing individual nameplates.
-
-Available modes include:
-
-Game settings · Combat · Hidden
-
-Game settings means Murgle steps aside and respects your normal WoW configuration.
-
----
-
-### Quest automation without losing control
-
-Automate predictable quest interactions while leaving anything that needs an actual decision to the player.
-
-- Auto-accept eligible quests
-- Auto turn-in when no reward choice or money cost is involved
-- Hold Shift to keep an interaction manual
-- Automation is bypassed during combat
-- Reward choices, uncertain quest states and special confirmations remain manual
-
-Murgle intentionally keeps quest automation conservative.
-
----
-
-### World Refresh handling
-
-Murgle can handle WoW Forever's World Refresh warning through the specific native refresh UI.
-
-Choose between:
-
-Just hide
-
-Hides the automatic warning. This does not cancel the scheduled transfer.
-
-Accept & hide
-
-Accepts the transfer and hides the warning.
-
-> Accept & hide is not recommended for Hardcore characters.
-
-Manually opened prompts remain available.
-
----
-
-### Spell Queue Window
+#### Spell Queue Window
 
 Adjust WoW's native Spell Queue Window directly from Murgle.
 
-- Adjustable 0–400 ms
+- Adjustable 0–400 ms slider
 - Blizzard default clearly marked at 400 ms
-- On-demand latency-based suggestion
+- On-demand latency-based auto-detection button
 - Built-in help explaining how to tune the value
 - No continuous latency monitoring
 
-Suggest from latency samples World latency once, adds 150 ms, rounds to the nearest 10 ms and caps the suggestion at 400 ms.
+#### Compact Blizzard Unit Frames
 
-It is intended as a starting point for manual adjustment rather than an automatically enforced value.
+Murgle cleans up Blizzard's existing secure unit frames without replacing them:
 
----
-
-### Faster looting and vendors
-
-Small conveniences for repetitive interactions.
-
-#### Loot
-
-- Fast Loot
-- Follows WoW's native Auto Loot setting and modifier
-- Locked slots and uncertain states remain under native handling
-
-#### Vendors
-
-- Auto repair
-- Prefer permitted guild repair funds
-- Personal-gold fallback
-- Sell junk
-- Only eligible unlocked poor-quality carried items with vendor value are sold
-
-Repair and junk-selling changes take effect on the next merchant visit.
+- **Hide player name:** Suppresses the player name text above the player frame.
+- **Hide player frame:** Cleanly hides the player frame (with combat deferral).
+- **Compact frames:** Single streamlined toggle that cleans up Player, Target, Focus, and Target-of-Target frames together (removes portrait art and circular backgrounds while keeping the native shaped HP/mana bar borders, textures, and geometry).
 
 ---
 
-### Cleaner chat
+### Map & Quests
 
-Reduce Blizzard chat chrome without replacing the chat system.
+#### Clean Square Minimap
 
-- Hide Menu and Channel buttons
-- Hide Combat Log tab
-- Hide voice-chat buttons
-- Default / Fade / Hide behaviour for regular and custom chat tabs
+- **Clean square minimap:** Single toggle bundling the square minimap shape, clean edges, and removal of decorative borders, day/night wheel, zone text, calendar, addon compartment, and zoom buttons.
+- **Hide clock:** Independent toggle to show or hide the minimap clock.
+- **Hide tracking:** Independent toggle to show or hide the tracking button.
 
-Faded tabs reappear when interacting with chat.
+#### Quests & Interactables
 
----
-
-### Tooltip controls
-
-Control where Blizzard tooltips appear and reduce combat clutter.
-
-- Left of cursor
-- Right of cursor
-- At cursor
-- Hide unit tooltips during combat
-- Hide object tooltips during combat
-- Hide corpse tooltips during combat
-
-Item and spell tooltips remain available.
+- **Loot & quest sparkles:** Re-enables Blizzard's classic sparkle effect on herbs, ore nodes, quest objects, corpses, and interactables instead of modern outline highlighting.
+- **Objective tracker headers:** Toggle to hide or show tracker headers.
+- **Objective tracker visibility:** Always show, hide in combat, or only show out of combat.
+- **Show reward values:** Marks quest reward items with their vendor value to pick the most profitable reward.
+- **Auto-accept & auto-turn-in:** Conservative quest automation for routine quests without reward choices or costs; bypassed in combat or when holding Shift.
 
 ---
 
-### Quest and reputation improvements
+### Items & Services
 
-#### Quest objects
+Small native conveniences for inventory, merchants, and services.
 
-Use Blizzard's native sparkle effect for required quest objects instead of object outlines.
-
-#### Reputation
-
-Automatically watch a faction when a recognised reputation gain occurs.
+- **Fast Loot:** Instant, sequential looting following native Auto Loot rules and modifiers.
+- **Ammo count:** Displays equipped ammunition totals above the backpack button.
+- **Auto repair & Guild repair:** Automatically repairs gear at capable merchants with optional guild bank funding.
+- **Sell junk:** Sells eligible poor-quality items on merchant visit.
+- **Bulk buy:** Shift-click merchant items to purchase across stacks.
+- **Train all:** Train all available spells at class trainers with a single click.
+- **Skip service gossip:** Opens flight maps and services directly when only one option exists.
+- **Skip confirmation dialogs:** Optional toggles to skip confirmation on bind-on-pickup loot and loot rolls.
 
 ---
 
-### Errors and selective sound muting
+### Chat & Tooltips
 
-Reduce repetitive error spam and mute specific sounds without muting the whole game.
+#### Chat Frame
 
-#### Error messages
+- **Clean chat frame:** Consolidates chat buttons (Menu, Channels, Quick Join) and voice buttons (Mute, Deafen) into a clean, minimal chat window.
+- **Hide combat log:** Suppresses the Combat Log tab.
+- **Chat tabs:** Configure tab visibility behavior (Show, Fade, or Hide).
 
-All · Important only
+#### Tooltips
 
-Important only hides common range, mana and item-cooldown errors.
+- **Anchor to cursor:** Anchors tooltips to the mouse cursor (left, right, or centered).
+- **Hide in combat:** Suppresses unit, object, and corpse tooltips during combat to reduce visual clutter.
 
-#### Selective sound muting
+---
 
-Individual controls are available for 13 sound groups, including:
+### Errors & Sound
 
-- Spell fizzles
-- Error speech
-- Train emotes
-- Mechanical footsteps
-- Footsteps
-- Hooves
-- Clock chimes
-- UI clicks
-- Ready checks
-- Cat yawns
-- Piccolo / Seduction
-- Mechanostriders
-- Zeppelins
+#### Error Messages
 
-Mute all listed / Unmute all listed affects only Murgle's listed sound groups.
+- Filter repetitive error spam (All vs. Important only).
+
+#### Selective Sound Muting
+
+- Mute specific repetitive sound groups (Spell fizzles, Error speech, Train emotes, Mechanical footsteps, Mounts, Zeppelins, Clock chimes, etc.) without muting the whole game.
+
+---
+
+### World Refresh Handling
+
+Handles WoW Forever's World Refresh warning prompts safely:
+
+- **Just hide:** Hides the automatic warning prompt without cancelling the scheduled transfer.
+- **Accept & hide:** Accepts the transfer and hides the prompt (not recommended for Hardcore characters).
 
 ---
 

@@ -339,17 +339,41 @@ function MinimapOptions.ApplySquare()
     Murgle.DeferUntilOutOfCombat("minimap.square", applySquare)
 end
 
-function MinimapOptions.ApplyAll()
-    MinimapOptions.ApplyHeader()
-    MinimapOptions.ApplyZoneText()
-    MinimapOptions.ApplyClock()
-    MinimapOptions.ApplyCalendar()
-    MinimapOptions.ApplyTracking()
-    MinimapOptions.ApplyZoomButtons()
-    MinimapOptions.ApplyAddonCompartment()
-    MinimapOptions.ApplyBorder()
+function MinimapOptions.ApplyCleanSquare()
+    local clean = MurgleDB.minimap.cleanSquare == true
+    MurgleDB.minimap.square = clean
+    MurgleDB.minimap.hideBorder = clean
+    MurgleDB.minimap.hideDayNight = clean
+    MurgleDB.minimap.hideZoneText = clean
+    MurgleDB.minimap.hideHeader = clean
+    MurgleDB.minimap.hideCalendar = clean
+    MurgleDB.minimap.hideAddonCompartment = clean
+    MurgleDB.minimap.hideZoomButtons = clean
     MinimapOptions.ApplySquare()
+    MinimapOptions.ApplyBorder()
     MinimapOptions.ApplyDayNight()
+    MinimapOptions.ApplyZoneText()
+    MinimapOptions.ApplyHeader()
+    MinimapOptions.ApplyCalendar()
+    MinimapOptions.ApplyAddonCompartment()
+    MinimapOptions.ApplyZoomButtons()
+end
+
+function MinimapOptions.ApplyAll()
+    if MurgleDB.minimap and MurgleDB.minimap.cleanSquare == true then
+        MinimapOptions.ApplyCleanSquare()
+    else
+        MinimapOptions.ApplyHeader()
+        MinimapOptions.ApplyZoneText()
+        MinimapOptions.ApplyCalendar()
+        MinimapOptions.ApplyZoomButtons()
+        MinimapOptions.ApplyAddonCompartment()
+        MinimapOptions.ApplyBorder()
+        MinimapOptions.ApplySquare()
+        MinimapOptions.ApplyDayNight()
+    end
+    MinimapOptions.ApplyClock()
+    MinimapOptions.ApplyTracking()
 end
 
 function MinimapOptions.Initialize()

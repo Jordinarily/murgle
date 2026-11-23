@@ -38,9 +38,9 @@ test("all visibility controls share combat deferral and reset restores mixed ori
     UI.withAddon(function(M, state)
         local core = state.frames[1]
         eq(#controls, 13)
-        eq(M.GetDeferredCount(), #controls)
+        eq(M.GetDeferredCount(), 17)
         M.ApplyAllSettings()
-        eq(M.GetDeferredCount(), #controls, "repeated application must replace queued requests")
+        eq(M.GetDeferredCount(), 17, "repeated application must replace queued requests")
         for i, control in ipairs(controls) do
             eq(control.changes, 0)
             eq(control.shown, i % 2 == 1)
@@ -55,11 +55,11 @@ test("all visibility controls share combat deferral and reset restores mixed ori
 
         state.combat = true
         M.ResetDB()
-        eq(M.GetDeferredCount(), #controls)
+        eq(M.GetDeferredCount(), 12)
         -- Re-enable one option after reset, before the deferred work executes.
         MurgleDB.minimap.hideCalendar = true
         M.Minimap.ApplyCalendar()
-        eq(M.GetDeferredCount(), #controls)
+        eq(M.GetDeferredCount(), 12)
         state.combat = false
         core.scripts.OnEvent(core, "PLAYER_REGEN_ENABLED")
         for i, control in ipairs(controls) do
@@ -90,13 +90,11 @@ test("all visibility controls share combat deferral and reset restores mixed ori
         MurgleDB = {
             interface = { hideMicroMenu = true, hideBagBar = true, objectiveTrackerHeaders = true },
             minimap = {
-                hideZoneText = true,
+                cleanSquare = true,
                 hideClock = true,
-                hideCalendar = true,
                 hideTracking = true,
-                hideZoomButtons = true,
             },
-            chat = { hideButtons = true, hideCombatLog = true },
+            chat = { cleanChat = true, hideCombatLog = true },
         }
     end)
 end)

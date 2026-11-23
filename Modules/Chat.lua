@@ -4,49 +4,6 @@ Murgle.Chat = Chat
 
 local menuState, channelState, combatLogState = {}, {}, {}
 local voiceStates = {}
-local voicePending
-
-local function hideVoiceButton()
-    return false
-end
-
-local function applyVoiceButtons()
-    voicePending = nil
-    local hide = MurgleDB.chat.hideVoiceButtons == true
-    for _, name in ipairs({ "ChatFrameToggleVoiceMuteButton", "ChatFrameToggleVoiceDeafenButton" }) do
-        local state = voiceStates[name]
-        local frame = state and state.frame or _G[name]
-        if
-            (hide or state)
-            and frame
-            and type(frame.IsProtected) == "function"
-            and frame:IsProtected() == false
-            and type(frame.SetVisibilityQueryFunction) == "function"
-            and type(frame.UpdateVisibleState) == "function"
-        then
-            if hide and not state and type(frame.isVisible) == "function" then
-                voiceStates[name] = { frame = frame, query = frame.isVisible }
-                frame:SetVisibilityQueryFunction(hideVoiceButton)
-                frame:UpdateVisibleState()
-            elseif not hide and state then
-                -- Preserve a policy another addon installed after ours.
-                if frame.isVisible == hideVoiceButton then
-                    frame:SetVisibilityQueryFunction(state.query)
-                    frame:UpdateVisibleState()
-                end
-                voiceStates[name] = nil
-            end
-        end
-    end
-end
-
-function Chat.ApplyVoiceButtons()
-    if MurgleDB.chat.hideVoiceButtons ~= true and next(voiceStates) == nil and not voicePending then
-        return
-    end
-    voicePending = true
-    Murgle.DeferUntilOutOfCombat("chat.voiceButtons", applyVoiceButtons)
-end
 
 -- Capture only on first enable; restoring must not show a previously hidden button.
 local function applyVisibility(frame, state, hide)
@@ -88,13 +45,103 @@ local function queue(key, state, hide, apply)
     Murgle.DeferUntilOutOfCombat(key, apply)
 end
 
-local function applyMenu()
-    applyVisibility(menuState.frame or ChatFrameMenuButton, menuState, MurgleDB.chat.hideButtons == true)
+local socialFrame, socialShown, socialPending
+local socialHooked = {}
+local applyCleanChat
+
+local function applySocial()
+    socialPending = nil
+    local enabled = MurgleDB.chat.cleanChat == true or MurgleDB.chat.hideButtons == true
+    local frame = socialFrame or QuickJoinToastButton
+    if
+        (not enabled and not socialFrame)
+        or not frame
+        or type(frame.IsProtected) ~= "function"
+        or frame:IsProtected()
+        or type(frame.IsShown) ~= "function"
+        or type(frame.Hide) ~= "function"
+        or type(frame.Show) ~= "function"
+        or type(frame.InitMKB) ~= "function"
+        or type(frame.UninitMKB) ~= "function"
+        or type(hooksecurefunc) ~= "function"
+    then
+        return
+    end
+    if enabled then
+        if not socialFrame then
+            socialFrame, socialShown = frame, frame:IsShown()
+        end
+        if not socialHooked[frame] then
+            socialHooked[frame] = true
+            local function nativeChanged(self)
+                local isEnabled = MurgleDB.chat.cleanChat == true or MurgleDB.chat.hideButtons == true
+                if not isEnabled or socialFrame ~= self then
+                    return
+                end
+                socialShown = self:IsShown()
+                socialPending = true
+                Murgle.DeferUntilOutOfCombat("chat.cleanChat", applyCleanChat)
+            end
+            hooksecurefunc(frame, "InitMKB", nativeChanged)
+            hooksecurefunc(frame, "UninitMKB", nativeChanged)
+        end
+        frame:Hide()
+    else
+        if socialShown then
+            frame:Show()
+        else
+            frame:Hide()
+        end
+        socialFrame, socialShown = nil, nil
+    end
 end
 
-local function applyChannels()
-    applyVisibility(channelState.frame or ChatFrameChannelButton, channelState, MurgleDB.chat.hideButtons == true)
+applyCleanChat = function()
+    local hide = MurgleDB.chat.cleanChat == true
+    applyVisibility(menuState.frame or ChatFrameMenuButton, menuState, hide)
+    applyVisibility(channelState.frame or ChatFrameChannelButton, channelState, hide)
+    for _, name in ipairs({ "ChatFrameToggleVoiceMuteButton", "ChatFrameToggleVoiceDeafenButton" }) do
+        local state = voiceStates[name]
+        local frame = state and state.frame or _G[name]
+        if frame and type(frame.SetAlpha) == "function" then
+            if hide then
+                if not state then
+                    local alpha = type(frame.GetAlpha) == "function" and frame:GetAlpha() or 1
+                    voiceStates[name] = { frame = frame, alpha = alpha }
+                end
+                frame:SetAlpha(0)
+                if type(frame.EnableMouse) == "function" then
+                    frame:EnableMouse(false)
+                end
+            elseif state then
+                frame:SetAlpha(state.alpha or 1)
+                if type(frame.EnableMouse) == "function" then
+                    frame:EnableMouse(true)
+                end
+                voiceStates[name] = nil
+            end
+        end
+    end
+    applySocial()
 end
+
+function Chat.ApplyCleanChat()
+    local enabled = MurgleDB.chat and MurgleDB.chat.cleanChat == true
+    if
+        not enabled
+        and menuState.shown == nil
+        and channelState.shown == nil
+        and not next(voiceStates)
+        and not socialFrame
+        and not socialPending
+    then
+        return
+    end
+    Murgle.DeferUntilOutOfCombat("chat.cleanChat", applyCleanChat)
+end
+
+Chat.ApplyButtons = Chat.ApplyCleanChat
+Chat.ApplyVoiceButtons = Chat.ApplyCleanChat
 
 local combatLogHooks = {}
 
@@ -172,64 +219,6 @@ local function applyCombatLog()
     combatLogState.changing = true
     frame:Hide()
     combatLogState.changing = nil
-end
-
-local socialFrame, socialShown, socialPending
-local socialHooked = {}
-
-local function applySocial()
-    socialPending = nil
-    local enabled = MurgleDB.chat.hideButtons == true
-    local frame = socialFrame or QuickJoinToastButton
-    if
-        (not enabled and not socialFrame)
-        or not frame
-        or type(frame.IsProtected) ~= "function"
-        or frame:IsProtected()
-        or type(frame.IsShown) ~= "function"
-        or type(frame.Hide) ~= "function"
-        or type(frame.Show) ~= "function"
-        or type(frame.InitMKB) ~= "function"
-        or type(frame.UninitMKB) ~= "function"
-        or type(hooksecurefunc) ~= "function"
-    then
-        return
-    end
-    if enabled then
-        if not socialFrame then
-            socialFrame, socialShown = frame, frame:IsShown()
-        end
-        if not socialHooked[frame] then
-            socialHooked[frame] = true
-            local function nativeChanged(self)
-                if MurgleDB.chat.hideButtons ~= true or socialFrame ~= self then
-                    return
-                end
-                socialShown = self:IsShown()
-                socialPending = true
-                Murgle.DeferUntilOutOfCombat("chat.social", applySocial)
-            end
-            hooksecurefunc(frame, "InitMKB", nativeChanged)
-            hooksecurefunc(frame, "UninitMKB", nativeChanged)
-        end
-        frame:Hide()
-    else
-        if socialShown then
-            frame:Show()
-        else
-            frame:Hide()
-        end
-        socialFrame, socialShown = nil, nil
-    end
-end
-
-function Chat.ApplyButtons()
-    if MurgleDB.chat.hideButtons == true and QuickJoinToastButton or socialFrame or socialPending then
-        socialPending = true
-        Murgle.DeferUntilOutOfCombat("chat.social", applySocial)
-    end
-    queue("chat.menu", menuState, MurgleDB.chat.hideButtons == true, applyMenu)
-    queue("chat.channels", channelState, MurgleDB.chat.hideButtons == true, applyChannels)
 end
 
 function Chat.ApplyCombatLog()
@@ -480,8 +469,7 @@ function Chat.ApplyTabs()
 end
 
 function Chat.ApplyAll()
-    Chat.ApplyButtons()
-    Chat.ApplyVoiceButtons()
+    Chat.ApplyCleanChat()
     Chat.ApplyCombatLog()
     Chat.ApplyTabs()
 end

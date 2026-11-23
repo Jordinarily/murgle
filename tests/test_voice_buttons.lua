@@ -1,27 +1,26 @@
 local H = dofile("tests/helpers.lua")
 
 local function withVoice(fn)
-    local s = { loggedIn = true, updates = 0, queued = {} }
+    local s = { queued = {} }
     local function frame()
-        local f = { shown = true }
-        f.isVisible = function()
-            return s.loggedIn
+        local f = { shown = true, alpha = 1, mouse = true }
+        function f:GetAlpha()
+            return self.alpha
+        end
+        function f:SetAlpha(v)
+            self.alpha = v
+        end
+        function f:EnableMouse(enabled)
+            self.mouse = enabled
         end
         function f:IsProtected()
             return self.protected == true
-        end
-        function f:SetVisibilityQueryFunction(query)
-            self.isVisible = query
-        end
-        function f:UpdateVisibleState()
-            s.updates = s.updates + 1
-            self.shown = self:isVisible()
         end
         return f
     end
     local mute, deafen = frame(), frame()
     H.withGlobals({
-        MurgleDB = { chat = { hideVoiceButtons = false } },
+        MurgleDB = { chat = { cleanChat = false } },
         ChatFrameToggleVoiceMuteButton = mute,
         ChatFrameToggleVoiceDeafenButton = deafen,
     }, function()
@@ -39,84 +38,56 @@ local function withVoice(fn)
     end)
 end
 
-test("voice buttons disabled are inert and restore current native visibility", function()
+test("voice buttons disabled are inert and clean chat suppresses alpha and mouse safely", function()
     withVoice(function(C, s, mute, deafen)
-        C.ApplyVoiceButtons()
-        eq(s.updates, 0)
-        local original = mute.isVisible
-        MurgleDB.chat.hideVoiceButtons = true
-        C.ApplyVoiceButtons()
-        eq(mute.shown, false)
-        eq(deafen.shown, false)
-        local updates = s.updates
-        C.ApplyVoiceButtons()
-        eq(s.updates, updates)
-        mute:UpdateVisibleState()
-        eq(mute.shown, false)
-        s.loggedIn = false
-        MurgleDB.chat.hideVoiceButtons = false
-        C.ApplyVoiceButtons()
-        eq(mute.isVisible, original)
-        eq(mute.shown, false)
-        s.loggedIn = true
-        mute:UpdateVisibleState()
-        eq(mute.shown, true)
+        C.ApplyCleanChat()
+        eq(mute.alpha, 1)
+        eq(mute.mouse, true)
+
+        MurgleDB.chat.cleanChat = true
+        C.ApplyCleanChat()
+        eq(mute.alpha, 0)
+        eq(mute.mouse, false)
+        eq(deafen.alpha, 0)
+        eq(deafen.mouse, false)
+
+        MurgleDB.chat.cleanChat = false
+        C.ApplyCleanChat()
+        eq(mute.alpha, 1)
+        eq(mute.mouse, true)
+        eq(deafen.alpha, 1)
+        eq(deafen.mouse, true)
     end)
 end)
 
-test("voice buttons preserve external policies and restore captured frames", function()
+test("voice buttons skip missing integrations independently", function()
     withVoice(function(C, _, mute, deafen)
-        local original = mute.isVisible
-        MurgleDB.chat.hideVoiceButtons = true
-        C.ApplyVoiceButtons()
-        local external = function()
-            return false
-        end
-        deafen:SetVisibilityQueryFunction(external)
         ChatFrameToggleVoiceMuteButton = nil
-        MurgleDB.chat.hideVoiceButtons = false
-        C.ApplyVoiceButtons()
-        eq(mute.isVisible, original)
-        eq(deafen.isVisible, external)
+        MurgleDB.chat.cleanChat = true
+        C.ApplyCleanChat()
+        eq(mute.alpha, 1)
+        eq(deafen.alpha, 0)
+        eq(deafen.mouse, false)
+        MurgleDB.chat.cleanChat = false
+        C.ApplyCleanChat()
+        eq(deafen.alpha, 1)
+        eq(deafen.mouse, true)
     end)
 end)
 
-test("voice buttons skip protected and missing integrations independently", function()
-    withVoice(function(C, _, mute, deafen)
-        mute.protected = true
-        local original = mute.isVisible
-        MurgleDB.chat.hideVoiceButtons = true
-        C.ApplyVoiceButtons()
-        eq(mute.isVisible, original)
-        eq(deafen.shown, false)
-        mute.protected = false
-        mute.SetVisibilityQueryFunction = nil
-        C.ApplyVoiceButtons()
-        eq(mute.isVisible, original)
-    end)
-end)
-
-test("voice buttons combat queue uses latest setting and restores after protection clears", function()
-    withVoice(function(C, s, mute)
+test("voice buttons combat queue uses latest setting and applies after combat", function()
+    withVoice(function(C, s, mute, deafen)
         s.combat = true
-        MurgleDB.chat.hideVoiceButtons = true
-        C.ApplyVoiceButtons()
-        eq(s.updates, 0)
-        MurgleDB.chat.hideVoiceButtons = false
-        C.ApplyVoiceButtons()
+        MurgleDB.chat.cleanChat = true
+        C.ApplyCleanChat()
+        eq(mute.alpha, 1)
         s.combat = false
         for _, action in pairs(s.queued) do
             action()
         end
-        eq(s.updates, 0)
-        MurgleDB.chat.hideVoiceButtons = true
-        C.ApplyVoiceButtons()
-        mute.protected = true
-        MurgleDB.chat.hideVoiceButtons = false
-        C.ApplyVoiceButtons()
-        eq(mute.shown, false)
-        mute.protected = false
-        C.ApplyVoiceButtons()
-        eq(mute.shown, true)
+        eq(mute.alpha, 0)
+        eq(mute.mouse, false)
+        eq(deafen.alpha, 0)
+        eq(deafen.mouse, false)
     end)
 end)

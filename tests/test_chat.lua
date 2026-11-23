@@ -20,7 +20,7 @@ test("chat saved choices hide captured controls and reset restores original stat
         eq(next(state.frames[1].events), nil)
     end, function(M)
         fixtures()
-        MurgleDB = M.ApplyDefaults({ chat = { hideButtons = true, hideCombatLog = true } })
+        MurgleDB = M.ApplyDefaults({ chat = { cleanChat = true, hideCombatLog = true } })
     end)
 end)
 
@@ -43,7 +43,7 @@ test("chat controls fail independently and do not retry missing frames", functio
         fixtures()
         ChatFrameMenuButton = nil
         ChatFrameChannelButton.shown = true
-        MurgleDB.chat.hideButtons = true
+        MurgleDB.chat.cleanChat = true
         MurgleDB.chat.hideCombatLog = true
         M.ApplyAllSettings()
         eq(ChatFrameChannelButton.shown, false)
@@ -70,7 +70,7 @@ test("reset before combat ends cancels pending chat hiding", function()
     end, function(M, state)
         fixtures()
         state.combat = true
-        MurgleDB = M.ApplyDefaults({ chat = { hideButtons = true, hideCombatLog = true } })
+        MurgleDB = M.ApplyDefaults({ chat = { cleanChat = true, hideCombatLog = true } })
     end)
 end)
 
@@ -227,16 +227,16 @@ test("chat social button hides and restores latest native input-mode visibility"
     }, function()
         UI.withAddon(function(M)
             eq(social.changes, 0)
-            MurgleDB.chat.hideButtons = true
-            M.Chat.ApplyButtons()
+            MurgleDB.chat.cleanChat = true
+            M.Chat.ApplyCleanChat()
             eq(social.shown, false)
             social:InitMKB()
             eq(social.shown, false)
-            MurgleDB.chat.hideButtons = false
-            M.Chat.ApplyButtons()
+            MurgleDB.chat.cleanChat = false
+            M.Chat.ApplyCleanChat()
             eq(social.shown, true)
-            MurgleDB.chat.hideButtons = true
-            M.Chat.ApplyButtons()
+            MurgleDB.chat.cleanChat = true
+            M.Chat.ApplyCleanChat()
             social:UninitMKB()
             M.ResetDB()
             eq(social.shown, false)

@@ -48,11 +48,9 @@ local function fixtures()
 end
 
 local function enable()
-    MurgleDB.minimap.hideCalendar = true
+    MurgleDB.minimap.cleanSquare = true
     MurgleDB.minimap.hideClock = true
-    MurgleDB.minimap.hideZoneText = true
     MurgleDB.minimap.hideTracking = true
-    MurgleDB.minimap.hideZoomButtons = true
 end
 
 test("saved minimap choices apply at startup and reset restores each original visibility", function()
@@ -118,7 +116,7 @@ end)
 test("minimap startup in combat applies saved choices only after combat", function()
     UI.withAddon(function(M, state)
         eq(GameTimeFrame.changes, 0)
-        eq(M.GetDeferredCount(), 6)
+        eq(M.GetDeferredCount(), 11)
         state.combat = false
         local core = state.frames[1]
         core.scripts.OnEvent(core, "PLAYER_REGEN_ENABLED")
@@ -366,8 +364,8 @@ test("day night indicator skips unsafe frames and uses latest combat choice", fu
         state.combat = false
         state.frames[1].scripts.OnEvent(state.frames[1], "PLAYER_REGEN_ENABLED")
         eq(indicator.changes, 0)
-        MurgleDB.minimap.hideDayNight = true
-        M.Minimap.ApplyAll()
+        MurgleDB.minimap.cleanSquare = true
+        M.Minimap.ApplyCleanSquare()
         eq(indicator.changes, 1)
         M.ResetDB()
         eq(indicator.shown, false)

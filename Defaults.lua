@@ -3,44 +3,29 @@ local _, Murgle = ...
 Murgle.DEFAULTS = {
     schemaVersion = 1,
     interface = {
-        holdActionPages = false,
-        holdShiftPage = 2,
-        holdCtrlPage = 3,
-        holdAltPage = 0,
         hideMicroMenu = false,
         hideBagBar = false,
+        hideStatusBar1 = false,
         moveBags = false,
         hideXP = false,
         buffTriangleMouseover = false,
-        hideMacroNames = false,
-        fadeActionBars = false,
-        actionBarCombatOpacity = 25,
         objectiveTrackerHeaders = false,
-        trackerFontSize = "default",
         objectiveTrackerVisibility = "always",
         hideTalkingHead = true,
         hideBossBanner = true,
         hideZoneText = true,
-        hideTotemTimers = false,
-        blockHelpTips = false,
-        blockLootToasts = false,
     },
     minimap = {
-        square = false,
-        hideBorder = false,
-        hideDayNight = false,
-        hideZoneText = false,
+        cleanSquare = false,
         hideClock = false,
-        hideHeader = false,
-        hideCalendar = false,
         hideTracking = false,
-        hideAddonCompartment = false,
-        hideZoomButtons = false,
     },
-    quests = { sparkles = false, autoWatchReputation = false, rewardValues = false },
+    quests = {
+        sparkles = false,
+        rewardValues = false,
+    },
     automation = {
         trainAll = false,
-        warnLowRank = false,
         skipServiceGossip = false,
         confirmLootPickup = false,
         confirmLootRolls = false,
@@ -52,7 +37,6 @@ Murgle.DEFAULTS = {
     lootVendors = {
         ammoCount = false,
         markedItems = {},
-        disenchantClick = false,
         bulkBuy = false,
         restockTargets = {},
         fastLoot = true,
@@ -61,23 +45,16 @@ Murgle.DEFAULTS = {
         guildRepair = false,
     },
     chat = {
-        hideButtons = false,
-        hideVoiceButtons = false,
+        cleanChat = false,
         tabs = "show",
         hideCombatLog = false,
     },
     frames = {
         hidePlayerName = false,
-        cleanPlayer = false,
-        cleanTarget = false,
-        cleanTargetOfTarget = false,
-        enemyFactionOnly = false,
-        enemyNameplates = "blizzard",
-        friendlyNameplates = "blizzard",
-        friendlyNamesOnly = false,
+        hidePlayerFrame = false,
+        compactFrames = false,
     },
     tooltip = {
-        itemDetails = false,
         cursorAnchor = false,
         anchor = "right",
         hideInCombat = false,
@@ -96,7 +73,6 @@ Murgle.DEFAULTS = {
         mutePiccolo = false,
         muteMechanostriders = false,
         muteZeppelins = false,
-
         muteTrains = false,
         muteMechanicalSteps = false,
         muteErrorSpeech = false,
@@ -121,20 +97,76 @@ function Murgle.ApplyDefaults(db)
         db = {}
     end
     fill(db, Murgle.DEFAULTS)
-    -- Retired item-use and vendor controls must not run from saved opt-ins.
-    db.automation.useQuestStarters = nil
-    db.lootVendors.openClams = nil
-    db.lootVendors.markedJunk = nil
-    db.lootVendors.restock = nil
-    db.tooltip.spellDetails = nil
-    db.tooltip.compact = nil
-    -- Retired native duplicate: preserve the current game preference.
-    db.minimap.hideCoordinates = nil
-    db.minimap.coordinatesRestore = nil
-    if db.interface.objectiveTrackerVisibility == "combat" then
-        db.interface.objectiveTrackerVisibility = "always"
+    -- Clean retired keys
+    if db.interface then
+        db.interface.holdActionPages = nil
+        db.interface.holdShiftPage = nil
+        db.interface.holdCtrlPage = nil
+        db.interface.holdAltPage = nil
+        db.interface.hideMacroNames = nil
+        db.interface.fadeActionBars = nil
+        db.interface.actionBarCombatOpacity = nil
+        db.interface.hideTotemTimers = nil
+        db.interface.blockHelpTips = nil
+        db.interface.blockLootToasts = nil
+        db.interface.trackerFontSize = nil
+        if db.interface.objectiveTrackerVisibility == "combat" then
+            db.interface.objectiveTrackerVisibility = "always"
+        end
     end
-    if db.errors.mode == "hidden" then
+    if db.minimap then
+        db.minimap.hideCoordinates = nil
+        db.minimap.coordinatesRestore = nil
+        if db.minimap.cleanSquare == nil and db.minimap.square == true then
+            db.minimap.cleanSquare = true
+        end
+        db.minimap.square = nil
+        db.minimap.hideBorder = nil
+        db.minimap.hideDayNight = nil
+        db.minimap.hideZoneText = nil
+        db.minimap.hideHeader = nil
+        db.minimap.hideCalendar = nil
+        db.minimap.hideAddonCompartment = nil
+        db.minimap.hideZoomButtons = nil
+    end
+    if db.quests then
+        db.quests.autoWatchReputation = nil
+    end
+    if db.automation then
+        db.automation.useQuestStarters = nil
+        db.automation.warnLowRank = nil
+    end
+    if db.lootVendors then
+        db.lootVendors.openClams = nil
+        db.lootVendors.markedJunk = nil
+        db.lootVendors.restock = nil
+        db.lootVendors.disenchantClick = nil
+    end
+    if db.chat then
+        if db.chat.cleanChat == nil and (db.chat.hideButtons == true or db.chat.hideVoiceButtons == true) then
+            db.chat.cleanChat = true
+        end
+        db.chat.hideButtons = nil
+        db.chat.hideVoiceButtons = nil
+    end
+    if db.frames then
+        if db.frames.compactFrames == nil and (db.frames.cleanPlayer == true or db.frames.cleanTarget == true) then
+            db.frames.compactFrames = true
+        end
+        db.frames.cleanPlayer = nil
+        db.frames.cleanTarget = nil
+        db.frames.cleanTargetOfTarget = nil
+        db.frames.enemyFactionOnly = nil
+        db.frames.enemyNameplates = nil
+        db.frames.friendlyNameplates = nil
+        db.frames.friendlyNamesOnly = nil
+    end
+    if db.tooltip then
+        db.tooltip.spellDetails = nil
+        db.tooltip.compact = nil
+        db.tooltip.itemDetails = nil
+    end
+    if db.errors and db.errors.mode == "hidden" then
         db.errors.mode = "all"
     end
     return db

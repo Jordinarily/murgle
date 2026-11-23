@@ -94,9 +94,6 @@ function Murgle.ApplyAllSettings()
     if Murgle.Trainer then
         Murgle.Trainer.ApplyAll()
     end
-    if Murgle.ItemActions then
-        Murgle.ItemActions.ApplyAll()
-    end
     if Murgle.Commerce then
         Murgle.Commerce.ApplyAll()
     end
@@ -117,12 +114,6 @@ function Murgle.ApplyAllSettings()
     end
     if Murgle.Errors then
         Murgle.Errors.ApplyAll()
-    end
-    if Murgle.ModifierPaging then
-        Murgle.ModifierPaging.ApplyAll()
-    end
-    if Murgle.ItemDetails then
-        Murgle.ItemDetails.ApplyAll()
     end
     if Murgle.Ammo then
         Murgle.Ammo.ApplyAll()
@@ -221,9 +212,6 @@ function Murgle.Initialize()
     if Murgle.Trainer then
         Murgle.Trainer.Initialize()
     end
-    if Murgle.ItemActions then
-        Murgle.ItemActions.Initialize()
-    end
     if Murgle.Commerce then
         Murgle.Commerce.Initialize()
     end
@@ -244,12 +232,6 @@ function Murgle.Initialize()
     end
     if Murgle.Errors then
         Murgle.Errors.Initialize()
-    end
-    if Murgle.ModifierPaging then
-        Murgle.ModifierPaging.Initialize()
-    end
-    if Murgle.ItemDetails then
-        Murgle.ItemDetails.Initialize()
     end
     if Murgle.Ammo then
         Murgle.Ammo.Initialize()

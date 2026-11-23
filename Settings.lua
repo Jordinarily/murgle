@@ -102,8 +102,6 @@ local function toggle(category, group, key, labelKey, callback, predicate)
     return initializer
 end
 local function choice(category, group, key, labelKey, choices, callback, predicate)
-    -- trackerFontSize deliberately stores numeric sizes and "default". Native
-    -- Settings is type-strict, so expose a string and convert at this boundary.
     local default = Murgle.DEFAULTS[group][key]
     local stringValue = type(default) == "string"
     local kind = type(default)
@@ -149,12 +147,11 @@ local function buildGeneral(category, layout)
     for _, item in ipairs({
         { "hideMicroMenu", "HIDE_MICRO_MENU", "ApplyMicroMenu" },
         { "hideBagBar", "HIDE_BAG_BAR", "ApplyBagBar" },
+        { "hideStatusBar1", "HIDE_STATUS_BAR_1", "ApplyStatusBar1" },
         { "hideXP", "HIDE_XP", "ApplyXP" },
         { "hideZoneText", "HIDE_ZONE_TEXT", "ApplyZoneText" },
         { "hideBossBanner", "HIDE_BOSS_BANNER", "ApplyBossBanner" },
         { "hideTalkingHead", "HIDE_TALKING_HEAD", "ApplyTalkingHead" },
-        { "blockHelpTips", "BLOCK_HELP_TIPS", "ApplyHelpTips" },
-        { "blockLootToasts", "BLOCK_LOOT_TOASTS", "ApplyLootToasts" },
     }) do
         toggle(category, "interface", item[1], item[2], apply("Interface", item[3]))
     end
@@ -167,46 +164,9 @@ local function buildGeneral(category, layout)
         { "hideOnly", L.WORLD_REFRESH_HIDE_ONLY },
         { "acceptAndHide", L.WORLD_REFRESH_ACCEPT_HIDE },
     }, apply("Automation"), parentEnabled("automation", "autoWorldRefresh"))
-    header(layout, L.RESET)
-    action(layout, L.RESET, L.RESET, Settings.ConfirmReset, L.RESET_CONFIRM)
+    action(layout, L.AUTO_WORLD_REFRESH, L.APPLY_WORLD_REFRESH, Murgle.Automation.ApplyWorldRefresh)
 end
 local function buildCombat(category, layout)
-    header(layout, L.CATEGORY_ACTION_PAGING, L.PAGING_NATIVE_RETURN)
-    local function pagingAvailable()
-        return MurgleDB.interface.holdActionPages == true or Murgle.ModifierPaging.Available() == true
-    end
-    local paging =
-        toggle(category, "interface", "holdActionPages", "MODIFIER_PAGING", apply("ModifierPaging"), pagingAvailable)
-    paging:AddEvaluateStateFrameEvent("PLAYER_REGEN_ENABLED")
-    local pages = { { 0, L.PAGING_OFF } }
-    for page = 1, 6 do
-        pages[#pages + 1] = { page, tostring(page) }
-    end
-    for _, item in ipairs({
-        { "holdShiftPage", "PAGING_SHIFT" },
-        { "holdCtrlPage", "PAGING_CTRL" },
-        { "holdAltPage", "PAGING_ALT" },
-    }) do
-        choice(
-            category,
-            "interface",
-            item[1],
-            item[2],
-            pages,
-            apply("ModifierPaging"),
-            parentEnabled("interface", "holdActionPages")
-        )
-    end
-    toggle(category, "interface", "hideMacroNames", "HIDE_MACRO_NAMES", apply("Interface", "ApplyMacroNames"))
-    toggle(category, "interface", "fadeActionBars", "FADE_ACTION_BARS", apply("Interface", "ApplyActionBarFade"))
-    choice(category, "interface", "actionBarCombatOpacity", "COMBAT_OPACITY", {
-        { 0, "0%" },
-        { 25, "25%" },
-        { 50, "50%" },
-        { 75, "75%" },
-    }, apply("Interface", "ApplyActionBarFade"), parentEnabled("interface", "fadeActionBars"))
-    toggle(category, "automation", "warnLowRank", "WARN_LOW_RANK_LABEL", apply("SpellRanks"))
-    action(layout, L.WARN_LOW_RANK_LABEL, L.CHECK_SPELL_RANKS, Murgle.SpellRanks.Check)
     header(layout, L.SPELL_QUEUE, L.SPELL_QUEUE_HELP)
     local function queueAvailable()
         return Murgle.Interface.GetSpellQueueWindow() ~= nil
@@ -228,47 +188,15 @@ local function buildCombat(category, layout)
         queueAvailable
     )
     header(layout, L.CATEGORY_FRAMES)
-    for _, item in ipairs({
-        { "cleanPlayer", "CLEAN_PLAYER" },
-        { "cleanTarget", "CLEAN_TARGET" },
-        { "cleanTargetOfTarget", "CLEAN_TARGET_OF_TARGET" },
-        { "hidePlayerName", "HIDE_PLAYER_NAME" },
-        { "enemyFactionOnly", "ENEMY_FACTION_ONLY" },
-    }) do
-        toggle(category, "frames", item[1], item[2], apply("Frames"))
-    end
-    local modes = { { "blizzard", L.GAME_SETTINGS }, { "combat", L.COMBAT }, { "hidden", L.HIDDEN } }
-    for _, item in ipairs({ { "enemyNameplates", "ENEMY_NAMEPLATES" }, { "friendlyNameplates", "FRIENDLY_NAMEPLATES" } }) do
-        local key = item[1]
-        choice(category, "frames", key, item[2], modes, apply("Frames"), function()
-            return Murgle.Frames.NativeAvailable(key)
-        end)
-    end
-    toggle(category, "frames", "friendlyNamesOnly", "FRIENDLY_NAMES_ONLY", apply("Frames"), function()
-        return Murgle.Frames.NativeAvailable("friendlyNamesOnly")
-    end)
-    toggle(category, "interface", "hideTotemTimers", "HIDE_TOTEM_TIMERS", apply("Interface", "ApplyTotemTimers"))
+    toggle(category, "frames", "hidePlayerName", "HIDE_PLAYER_NAME", apply("Frames", "ApplyPlayerName"))
+    toggle(category, "frames", "hidePlayerFrame", "HIDE_PLAYER_FRAME", apply("Frames", "ApplyPlayerFrame"))
+    toggle(category, "frames", "compactFrames", "COMPACT_FRAMES", apply("Frames", "ApplyCompact"))
 end
 local function buildMap(category, layout)
     header(layout, L.CATEGORY_MINIMAP)
-    for _, item in ipairs({
-        { "square", "SQUARE_MINIMAP", "ApplySquare" },
-        { "hideBorder", "HIDE_MINIMAP_BORDER", "ApplyBorder" },
-        { "hideDayNight", "HIDE_DAY_NIGHT", "ApplyDayNight" },
-        { "hideZoneText", "HIDE_MINIMAP_ZONE", "ApplyZoneText" },
-        { "hideClock", "HIDE_CLOCK", "ApplyClock" },
-        { "hideHeader", "HIDE_MINIMAP_HEADER", "ApplyHeader" },
-        { "hideCalendar", "HIDE_CALENDAR", "ApplyCalendar" },
-        { "hideTracking", "HIDE_TRACKING", "ApplyTracking" },
-        { "hideAddonCompartment", "HIDE_ADDON_COMPARTMENT", "ApplyAddonCompartment" },
-        { "hideZoomButtons", "HIDE_ZOOM_BUTTONS", "ApplyZoomButtons" },
-    }) do
-        local predicate
-        if item[1] == "hideBorder" then
-            predicate = parentEnabled("minimap", "square", false)
-        end
-        toggle(category, "minimap", item[1], item[2], apply("Minimap", item[3]), predicate)
-    end
+    toggle(category, "minimap", "cleanSquare", "CLEAN_SQUARE_MINIMAP", apply("Minimap", "ApplyCleanSquare"))
+    toggle(category, "minimap", "hideClock", "HIDE_CLOCK", apply("Minimap", "ApplyClock"))
+    toggle(category, "minimap", "hideTracking", "HIDE_TRACKING", apply("Minimap", "ApplyTracking"))
     header(layout, L.CATEGORY_QUESTS)
     toggle(
         category,
@@ -282,42 +210,19 @@ local function buildMap(category, layout)
         { "ooc", L.OUT_OF_COMBAT },
         { "hidden", L.HIDDEN },
     }, apply("Interface", "ApplyTrackerVisibility"))
-    choice(category, "interface", "trackerFontSize", "TRACKER_FONT_SIZE", {
-        { "default", L.BLIZZARD_DEFAULT },
-        { 9, "9" },
-        { 10, "10" },
-        { 11, "11" },
-    }, apply("Interface", "ApplyTrackerFontSize"))
-    toggle(category, "quests", "sparkles", "QUEST_SPARKLES", apply("Quests"), function()
+    local sparklesAvailable = function()
         return Murgle.Quests.SparklesAvailable()
-    end)
-    toggle(category, "quests", "autoWatchReputation", "AUTO_WATCH_REPUTATION", apply("Quests"), function()
-        return Murgle.Quests.ReputationAvailable()
-    end)
+    end
+    local sparkles = toggle(category, "quests", "sparkles", "QUEST_SPARKLES", apply("Quests"), sparklesAvailable)
+    condition(sparkles, sparklesAvailable)
     toggle(category, "quests", "rewardValues", "REWARD_VALUES", apply("Rewards"))
     toggle(category, "automation", "autoQuest", "AUTO_QUEST", apply("Automation"))
     toggle(category, "automation", "autoTurnIn", "AUTO_TURN_IN", apply("Automation"))
-    local function levelAvailable()
-        local _, writable = Murgle.NativeOptions.Read("showQuestLevel")
-        return writable == true and InCombatLockdown() == false
-    end
-    local levels = proxy(category, "native", "showQuestLevel", "boolean", L.SHOW_QUEST_LEVELS, nil, function()
-        return Murgle.NativeOptions.Read("showQuestLevel") == "1"
-    end, function(value)
-        if levelAvailable() then
-            Murgle.NativeOptions.Set("showQuestLevel", value and "1" or "0")
-        end
-    end)
-    local initializer = native.CreateCheckbox(category, levels, L.SHOW_QUEST_LEVELS_HELP)
-    initializer:AddModifyPredicate(levelAvailable)
-    initializer:AddEvaluateStateFrameEvent("PLAYER_REGEN_DISABLED")
-    initializer:AddEvaluateStateFrameEvent("PLAYER_REGEN_ENABLED")
 end
 local function buildItems(category, layout)
     header(layout, L.CATEGORY_ITEMS)
     toggle(category, "lootVendors", "fastLoot", "FAST_LOOT", apply("LootVendors"))
     toggle(category, "lootVendors", "ammoCount", "AMMO_COUNT", apply("Ammo"))
-    toggle(category, "lootVendors", "disenchantClick", "DISENCHANT_CLICK", apply("ItemActions"))
     toggle(category, "automation", "confirmLootPickup", "CONFIRM_LOOT_PICKUP", apply("Interactions"))
     toggle(category, "automation", "confirmLootRolls", "CONFIRM_LOOT_ROLLS", apply("Interactions"))
     header(layout, L.SECTION_SERVICES)
@@ -337,8 +242,7 @@ local function buildItems(category, layout)
 end
 local function buildChat(category, layout)
     header(layout, L.CATEGORY_CHAT)
-    toggle(category, "chat", "hideButtons", "HIDE_CHAT_BUTTONS", apply("Chat", "ApplyButtons"))
-    toggle(category, "chat", "hideVoiceButtons", "HIDE_VOICE_BUTTONS", apply("Chat", "ApplyVoiceButtons"))
+    toggle(category, "chat", "cleanChat", "CLEAN_CHAT_FRAME", apply("Chat", "ApplyCleanChat"))
     toggle(category, "chat", "hideCombatLog", "HIDE_COMBAT_LOG", apply("Chat", "ApplyCombatLog"))
     choice(category, "chat", "tabs", "CHAT_TABS", {
         { "show", L.CHAT_DEFAULT },
@@ -353,7 +257,6 @@ local function buildChat(category, layout)
         { "cursor", L.CURSOR_AT },
     }, apply("Tooltip", "ApplyCursorAnchor"), parentEnabled("tooltip", "cursorAnchor"))
     toggle(category, "tooltip", "hideInCombat", "COMBAT_TOOLTIP_HIDE", apply("Tooltip", "ApplyCombatHide"))
-    toggle(category, "tooltip", "itemDetails", "ITEM_DETAILS", apply("ItemDetails"))
 end
 local function buildSound(category, layout)
     header(layout, L.SECTION_ERRORS, L.ERROR_SCOPE_NOTE)
@@ -385,27 +288,11 @@ local function buildSound(category, layout)
     end
 end
 function Settings.Refresh()
-    if root then
+    if native and native.NotifyUpdate then
         for _, variable in ipairs(variables) do
             native.NotifyUpdate(variable)
         end
     end
-end
-function Settings.ConfirmReset()
-    if not StaticPopupDialogs.MURGLE_RESET then
-        StaticPopupDialogs.MURGLE_RESET = {
-            text = L.RESET_CONFIRM,
-            button1 = L.RESET,
-            button2 = L.CANCEL,
-            OnAccept = function()
-                Murgle.ResetDB()
-            end,
-            timeout = 0,
-            whileDead = true,
-            hideOnEscape = true,
-        }
-    end
-    StaticPopup_Show("MURGLE_RESET")
 end
 function Settings.Initialize()
     if root then
@@ -447,3 +334,21 @@ function Settings.Show()
     end
 end
 Settings.Toggle = Settings.Show
+
+function Settings.ConfirmReset()
+    if not StaticPopupDialogs.MURGLE_RESET then
+        StaticPopupDialogs.MURGLE_RESET = {
+            text = L.RESET_CONFIRM,
+            button1 = L.RESET,
+            button2 = L.CANCEL,
+            OnAccept = function()
+                Murgle.ResetDB()
+                Settings.Refresh()
+            end,
+            timeout = 0,
+            whileDead = true,
+            hideOnEscape = true,
+        }
+    end
+    StaticPopup_Show("MURGLE_RESET")
+end

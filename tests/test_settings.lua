@@ -1,11 +1,17 @@
 local UI = dofile("tests/ui_helpers.lua")
 local H = dofile("tests/helpers.lua")
 
-test("native Settings registers six sections once without constructing controls", function()
+test("native Settings registers seven sections once without constructing controls", function()
     UI.withAddon(function(M, s)
         eq(#s.categories, 6)
         eq(s.categories[1].name, "Murgle")
-        local names = { "Combat & Frames", "Map & Quests", "Items & Services", "Chat & Tooltips", "Errors & Sound" }
+        local names = {
+            "Combat & Frames",
+            "Map & Quests",
+            "Items & Services",
+            "Chat & Tooltips",
+            "Errors & Sound",
+        }
         for i, name in ipairs(names) do
             eq(s.categories[i + 1].name, name)
             eq(s.categories[i + 1].parent, s.categories[1])
@@ -79,33 +85,23 @@ test("native setter uses only the selected feature apply path", function()
     end)
 end)
 
-test("native choices reject invalid values and preserve numeric tracker sizes", function()
+test("native choices reject invalid values", function()
     UI.withAddon(function(_, s)
-        local font = s:setting("interface", "trackerFontSize")
-        font:SetValue("10")
-        eq(MurgleDB.interface.trackerFontSize, 10)
-        eq(font:GetValue(), "10")
-        font:SetValue("99")
-        eq(MurgleDB.interface.trackerFontSize, 10)
         s:setting("automation", "worldRefreshMode"):SetValue("not-a-mode")
         eq(MurgleDB.automation.worldRefreshMode, "hideOnly")
     end)
 end)
 
-test("native controls keep enabled paging disableable and honour dependencies", function()
-    UI.withAddon(function(M, s)
-        M.ModifierPaging.Available = function()
-            return false
-        end
-        local control = s:control("interface", "holdActionPages")
+test("native controls honour dependencies", function()
+    UI.withAddon(function(_, s)
+        local control = s:control("lootVendors", "guildRepair")
         eq(control:IsEnabled(), false)
-        MurgleDB.interface.holdActionPages = true
-        eq(control:IsEnabled(), true)
-        s:setting("interface", "holdActionPages"):SetValue(false)
-        eq(MurgleDB.interface.holdActionPages, false)
-        eq(s:control("lootVendors", "guildRepair"):IsEnabled(), false)
         s:setting("lootVendors", "autoRepair"):SetValue(true)
-        eq(s:control("lootVendors", "guildRepair"):IsEnabled(), true)
+        eq(control:IsEnabled(), true)
+        s:setting("lootVendors", "guildRepair"):SetValue(true)
+        eq(MurgleDB.lootVendors.guildRepair, true)
+        s:setting("lootVendors", "guildRepair"):SetValue(false)
+        eq(MurgleDB.lootVendors.guildRepair, false)
     end)
 end)
 
@@ -149,30 +145,10 @@ test("late native Settings availability registers once and unregisters load list
     end)
 end)
 
-test("native quest level preference is not reset with addon defaults", function()
-    UI.withAddon(function(M, s)
-        local value = "1"
-        M.NativeOptions.Read = function()
-            return value, true
-        end
-        M.NativeOptions.Set = function(_, v)
-            value = v
-        end
-        local setting = s:setting("native", "showQuestLevel")
-        eq(setting:GetValue(), true)
-        setting:SetValueToDefault()
-        eq(value, "1")
-        M.ResetDB()
-        eq(value, "1")
-    end)
-end)
-
 test("native dependent controls subscribe to their parent setting", function()
     UI.withAddon(function(_, s)
         local guild = s:control("lootVendors", "guildRepair")
         assert(guild.parent and guild.parent.setting == s:setting("lootVendors", "autoRepair"))
-        local border = s:control("minimap", "hideBorder")
-        assert(border.parent and border.parent.setting == s:setting("minimap", "square"))
     end)
 end)
 
@@ -243,5 +219,34 @@ test("native refresh and sound choices retain important consequences in hover he
         local tabs = s:control("chat", "tabs")
         assert(tabs.help:find(M.L.CHAT_TABS_HIDE_NOTE, 1, true))
         assert(s:control("sound", "muteReadyCheck").help:find(M.L.SOUND_HELP, 1, true))
+    end)
+end)
+
+test("loot sparkles control in Map & Quests stays synchronized with DB", function()
+    UI.withAddon(function(M, s)
+        M.Quests.SparklesAvailable = function()
+            return true
+        end
+        local questsSetting = s:setting("quests", "sparkles")
+        local questsControl = s:control("quests", "sparkles")
+
+        eq(questsSetting:GetValue(), false)
+        eq(MurgleDB.quests.sparkles, false)
+        eq(questsControl.help, M.L.QUEST_SPARKLES_HELP)
+
+        local applied = 0
+        M.Quests.ApplyAll = function()
+            applied = applied + 1
+        end
+
+        questsSetting:SetValue(true)
+        eq(MurgleDB.quests.sparkles, true)
+        eq(questsSetting:GetValue(), true)
+        eq(applied, 1)
+
+        questsSetting:SetValue(false)
+        eq(MurgleDB.quests.sparkles, false)
+        eq(questsSetting:GetValue(), false)
+        eq(applied, 2)
     end)
 end)

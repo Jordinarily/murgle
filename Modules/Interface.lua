@@ -2,7 +2,7 @@ local _, Murgle = ...
 local Interface = {}
 Murgle.Interface = Interface
 
-local menuState, bagsState = {}, {}
+local menuState, bagsState, statusBar1State = {}, {}, {}
 local trackerHeaderState, questHeaderState = {}, {}
 local zoneState = {}
 local zoneEvents = { "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA" }
@@ -18,6 +18,7 @@ local function cancelUnusedStartupRetry()
     local settings = MurgleDB.interface
     if
         settings.hideXP ~= true
+        and settings.hideStatusBar1 ~= true
         and settings.hideMicroMenu ~= true
         and settings.hideBagBar ~= true
         and settings.objectiveTrackerHeaders ~= true
@@ -93,6 +94,40 @@ function Interface.ApplyBagBar()
     end
     bagsState.pending = true
     Murgle.DeferUntilOutOfCombat("interface.bagBar", applyBagBar)
+end
+
+local function applyStatusBar1()
+    statusBar1State.pending = nil
+    local frame = statusBar1State.frame or MainStatusTrackingBarContainer
+    local hide = MurgleDB.interface.hideStatusBar1 == true
+    if hide and frame and type(frame.HookScript) == "function" and statusBar1State.hooked ~= frame then
+        frame:HookScript("OnShow", function(self)
+            if MurgleDB.interface.hideStatusBar1 == true and statusBar1State.frame == self then
+                statusBar1State.shown = true
+                Interface.ApplyStatusBar1()
+            end
+        end)
+        statusBar1State.hooked = frame
+    end
+    applyVisibility(frame, statusBar1State, hide)
+    if hide and GameTooltip and type(GameTooltip.GetOwner) == "function" and type(GameTooltip.Hide) == "function" then
+        local owner = GameTooltip:GetOwner()
+        if owner and (owner == frame or (type(owner.IsDescendantOf) == "function" and owner:IsDescendantOf(frame))) then
+            GameTooltip:Hide()
+        end
+    end
+end
+
+function Interface.ApplyStatusBar1()
+    cancelUnusedStartupRetry()
+    if statusBar1State.unavailable then
+        return
+    end
+    if MurgleDB.interface.hideStatusBar1 ~= true and statusBar1State.shown == nil and not statusBar1State.pending then
+        return
+    end
+    statusBar1State.pending = true
+    Murgle.DeferUntilOutOfCombat("interface.statusBar1", applyStatusBar1)
 end
 
 local function applyHeader(frame, state)
@@ -592,312 +627,6 @@ function Interface.ApplyTrackerVisibility()
     updateTrackerVisibility()
 end
 
-local totemState = {}
-local totemHooks = {}
-
-local function applyTotemTimers()
-    local state = totemState
-    state.pending = nil
-    local hide = MurgleDB.interface.hideTotemTimers == true
-    if not state.active then
-        if not hide then
-            return
-        end
-        local frame = TotemFrame
-        if
-            not frame
-            or type(frame.IsProtected) ~= "function"
-            or frame:IsProtected()
-            or type(frame.IsShown) ~= "function"
-            or type(frame.SetShown) ~= "function"
-            or type(frame.Hide) ~= "function"
-            or type(hooksecurefunc) ~= "function"
-        then
-            return
-        end
-        state.frame, state.nativeShown, state.active = frame, frame:IsShown(), true
-        if not totemHooks[frame] then
-            -- Totem Update uses SetShown; vehicle display explicitly uses Hide.
-            -- Observe even redundant calls so expired totems never reappear on reset.
-            hooksecurefunc(frame, "SetShown", function(_, shown)
-                if not state.active or state.changing or state.frame ~= frame then
-                    return
-                end
-                state.nativeShown = not not shown
-                if frame:IsProtected() and InCombatLockdown() then
-                    Interface.ApplyTotemTimers()
-                    return
-                end
-                state.changing = true
-                frame:Hide()
-                state.changing = nil
-            end)
-            hooksecurefunc(frame, "Hide", function()
-                if not state.active or state.changing or state.frame ~= frame then
-                    return
-                end
-                state.nativeShown = false
-            end)
-            totemHooks[frame] = true
-        end
-    end
-    state.changing = true
-    if hide then
-        state.frame:Hide()
-    else
-        state.frame:SetShown(state.nativeShown)
-    end
-    state.changing = nil
-    if not hide then
-        state.active = nil
-        state.frame = nil
-    end
-end
-
-function Interface.ApplyTotemTimers()
-    if MurgleDB.interface.hideTotemTimers ~= true and not totemState.active and not totemState.pending then
-        return
-    end
-    totemState.pending = true
-    Murgle.DeferUntilOutOfCombat("interface.totemTimers", applyTotemTimers)
-end
-
-local helpTipsPrior
-
-function Interface.ApplyHelpTips()
-    local settings = MurgleDB.interface
-    if settings.blockHelpTips ~= true and helpTipsPrior == nil and settings.helpTipsRestore == nil then
-        return
-    end
-    if type(GetCVar) ~= "function" or type(SetCVar) ~= "function" then
-        return
-    end
-    local current = GetCVar("hideHelptips")
-    if current ~= "0" and current ~= "1" then
-        return
-    end
-    -- Never write HelpTip.supressHelpTips: native Game Menu construction reads
-    -- that shared Lua table before creating protected logout/exit callbacks.
-    if settings.blockHelpTips == true then
-        if helpTipsPrior ~= nil then
-            return
-        end
-        local saved = settings.helpTipsRestore
-        helpTipsPrior = (saved == "0" or saved == "1") and saved or current
-        settings.helpTipsRestore = helpTipsPrior
-        if current ~= "1" then
-            SetCVar("hideHelptips", "1")
-        end
-    else
-        local prior = helpTipsPrior or settings.helpTipsRestore
-        if current == "1" and (prior == "0" or prior == "1") and current ~= prior then
-            SetCVar("hideHelptips", prior)
-        end
-        helpTipsPrior, settings.helpTipsRestore = nil, nil
-    end
-end
-
-local lootToastEvents = {
-    "LOOT_ITEM_ROLL_WON",
-    "SHOW_LOOT_TOAST",
-    "SHOW_LOOT_TOAST_UPGRADE",
-    "SHOW_PVP_FACTION_LOOT_TOAST",
-    "SHOW_RATED_PVP_REWARD_TOAST",
-    "SHOW_LOOT_TOAST_LEGENDARY_LOOTED",
-}
-local lootToastFrame, lootToastRegistered, lootToastPending
-
-local function applyLootToasts()
-    lootToastPending = nil
-    if MurgleDB.interface.blockLootToasts ~= true then
-        if lootToastFrame then
-            for event in pairs(lootToastRegistered) do
-                lootToastFrame:RegisterEvent(event)
-            end
-            lootToastFrame, lootToastRegistered = nil, nil
-        end
-        return
-    end
-    if lootToastFrame then
-        return
-    end
-    local frame = AlertFrame
-    if
-        not frame
-        or type(frame.IsProtected) ~= "function"
-        or frame:IsProtected()
-        or type(frame.IsEventRegistered) ~= "function"
-        or type(frame.RegisterEvent) ~= "function"
-        or type(frame.UnregisterEvent) ~= "function"
-    then
-        return
-    end
-    lootToastFrame, lootToastRegistered = frame, {}
-    -- Leave active/queued alerts and every other subsystem running natively.
-    for _, event in ipairs(lootToastEvents) do
-        if frame:IsEventRegistered(event) then
-            lootToastRegistered[event] = true
-            frame:UnregisterEvent(event)
-        end
-    end
-end
-
-function Interface.ApplyLootToasts()
-    if MurgleDB.interface.blockLootToasts ~= true and not lootToastFrame and not lootToastPending then
-        return
-    end
-    lootToastPending = true
-    Murgle.DeferUntilOutOfCombat("interface.lootToasts", applyLootToasts)
-end
-
-local trackerFonts, trackerFontSize, trackerFontPending
-local trackerFontHooks = {}
-
-local function selectedTrackerFontSize()
-    local size = MurgleDB.interface.trackerFontSize
-    if size == 9 or size == 10 or size == 11 then
-        return size
-    end
-end
-
-local function restoreTrackerFonts()
-    if not trackerFonts then
-        return
-    end
-    for _, saved in ipairs(trackerFonts) do
-        saved.font:SetFont(saved.path, saved.size, saved.flags)
-    end
-    trackerFonts, trackerFontSize = nil, nil
-end
-
-local function applyTrackerFontSize()
-    trackerFontPending = nil
-    local size = selectedTrackerFontSize()
-    local manager = ObjectiveTrackerManager
-    local line, header = ObjectiveTrackerLineFont, ObjectiveTrackerHeaderFont
-    if trackerFonts and (not size or trackerFonts[1].font ~= line or trackerFonts[2].font ~= header) then
-        restoreTrackerFonts()
-        if manager and type(manager.UpdateAll) == "function" then
-            manager:UpdateAll()
-        end
-    end
-    if not size or (trackerFonts and trackerFontSize == size) then
-        return
-    end
-    if
-        not manager
-        or type(manager.UpdateAll) ~= "function"
-        or type(manager.SetTextSize) ~= "function"
-        or type(hooksecurefunc) ~= "function"
-    then
-        return
-    end
-    if not line or not header then
-        return
-    end
-    for _, font in pairs({ line = line, header = header }) do
-        if type(font.GetFont) ~= "function" or type(font.SetFont) ~= "function" then
-            return
-        end
-    end
-    if not trackerFonts then
-        local linePath, lineSize, lineFlags = line:GetFont()
-        local headerPath, headerSize, headerFlags = header:GetFont()
-        if
-            type(linePath) ~= "string"
-            or type(lineSize) ~= "number"
-            or type(headerPath) ~= "string"
-            or type(headerSize) ~= "number"
-        then
-            return
-        end
-        trackerFonts = {
-            { font = line, path = linePath, size = lineSize, flags = lineFlags },
-            { font = header, path = headerPath, size = headerSize, flags = headerFlags },
-        }
-    end
-    if not trackerFontHooks[manager] then
-        trackerFontHooks[manager] = true
-        hooksecurefunc(manager, "SetTextSize", function(self, nativeSize)
-            if self ~= ObjectiveTrackerManager or (not trackerFonts and not selectedTrackerFontSize()) then
-                return
-            end
-            -- Only accepted native sizes replace both shared fonts. Preserve
-            -- that latest native preference for disable/reset, including Edit Mode.
-            if type(nativeSize) == "number" and nativeSize >= 12 and nativeSize <= 20 then
-                trackerFonts, trackerFontSize = nil, nil
-                Interface.ApplyTrackerFontSize()
-            end
-        end)
-    end
-    line:SetFont(trackerFonts[1].path, size, trackerFonts[1].flags)
-    header:SetFont(trackerFonts[2].path, size + 2, trackerFonts[2].flags)
-    trackerFontSize = size
-    manager:UpdateAll()
-end
-
-function Interface.ApplyTrackerFontSize()
-    if not selectedTrackerFontSize() and not trackerFonts and not trackerFontPending then
-        return
-    end
-    trackerFontPending = true
-    Murgle.DeferUntilOutOfCombat("interface.trackerFontSize", applyTrackerFontSize)
-end
-
-local macroNames, macroPending
-local macroPrefixes = {
-    "ActionButton",
-    "MultiBarBottomLeftButton",
-    "MultiBarBottomRightButton",
-    "MultiBarLeftButton",
-    "MultiBarRightButton",
-    "MultiBar5Button",
-    "MultiBar6Button",
-    "MultiBar7Button",
-}
-local function applyMacroNames()
-    macroPending = nil
-    if MurgleDB.interface.hideMacroNames == true then
-        if macroNames then
-            return
-        end
-        macroNames = {}
-        -- Native ActionButton Update changes only Name text, never its visibility.
-        -- Enumerate existing native buttons once per enable, never on action updates.
-        for _, prefix in ipairs(macroPrefixes) do
-            for index = 1, 12 do
-                local button = _G[prefix .. index]
-                local name = button and button.Name
-                if
-                    name
-                    and type(name.IsShown) == "function"
-                    and type(name.Hide) == "function"
-                    and type(name.Show) == "function"
-                then
-                    macroNames[#macroNames + 1] = { region = name, shown = name:IsShown() }
-                    name:Hide()
-                end
-            end
-        end
-    elseif macroNames then
-        for _, saved in ipairs(macroNames) do
-            if saved.shown then
-                saved.region:Show()
-            else
-                saved.region:Hide()
-            end
-        end
-        macroNames = nil
-    end
-end
-
-function Interface.ApplyMacroNames()
-    if MurgleDB.interface.hideMacroNames == true or macroNames or macroPending then
-        macroPending = true
-        Murgle.DeferUntilOutOfCombat("interface.macroNames", applyMacroNames)
-    end
-end
-
 -- Native CVar metadata is checked only on settings/startup actions. A changed
 -- default or non-writable client fails closed rather than guessing compatibility.
 function Interface.GetSpellQueueWindow()
@@ -949,148 +678,16 @@ function Interface.AutoDetectSpellQueueWindow()
     Interface.SetSpellQueueWindow(latency + 150)
 end
 
-local actionBarNames = {
-    "MainActionBar",
-    "MultiBarBottomLeft",
-    "MultiBarBottomRight",
-    "MultiBarLeft",
-    "MultiBarRight",
-    "MultiBar5",
-    "MultiBar6",
-    "MultiBar7",
-}
-local actionBarStates = {}
-local actionBarEvents, actionBarEditManager, actionBarEditRegistry
-local actionBarFactor = 1
-
-local function readableAlpha(value)
-    return not (issecretvalue and issecretvalue(value)) and type(value) == "number" and value >= 0 and value <= 1
-end
-
-local function writeActionBarAlpha(frame, state, value)
-    state.writing = true
-    frame:SetAlpha(value)
-    state.writing = nil
-end
-
-function Interface.ApplyActionBarFade()
-    local enabled = MurgleDB.interface.fadeActionBars == true and type(hooksecurefunc) == "function"
-    local opacity = MurgleDB.interface.actionBarCombatOpacity
-    if type(opacity) ~= "number" or not (opacity >= 0 and opacity <= 100) then
-        opacity = 100
-    end
-    local manager = EditModeManagerFrame
-    local editing = manager and type(manager.IsEditModeActive) == "function" and manager:IsEditModeActive()
-    actionBarFactor = enabled and InCombatLockdown() and not editing and opacity / 100 or 1
-
-    if enabled then
-        local missing = false
-        for _, name in ipairs(actionBarNames) do
-            local frame = _G[name]
-            if frame and type(frame.GetAlpha) == "function" and type(frame.SetAlpha) == "function" then
-                if not actionBarStates[frame] then
-                    local state = {}
-                    actionBarStates[frame] = state
-                    -- Native opacity writers must not erase the combat fade.
-                    -- Observe their value for restoration without touching secure
-                    -- visibility, mouse handling, bindings or button attributes.
-                    hooksecurefunc(frame, "SetAlpha", function(self, value)
-                        if state.writing or state.original == nil then
-                            return
-                        end
-                        if not readableAlpha(value) then
-                            state.original = nil
-                            return
-                        end
-                        state.original = value
-                        writeActionBarAlpha(self, state, value * actionBarFactor)
-                    end)
-                end
-            else
-                missing = true
-            end
-        end
-        local registry = EventRegistry
-        if
-            registry
-            and type(registry.RegisterCallback) == "function"
-            and type(registry.UnregisterCallback) == "function"
-            and not actionBarEditRegistry
-        then
-            -- Native notifications run after the edit-state and layout changes.
-            -- Registry callbacks receive their owner first; no event data is needed.
-            local function refresh()
-                if MurgleDB.interface.fadeActionBars == true then
-                    Interface.ApplyActionBarFade()
-                end
-            end
-            registry:RegisterCallback("EditMode.Enter", refresh, Interface)
-            registry:RegisterCallback("EditMode.Exit", refresh, Interface)
-            actionBarEditRegistry = registry
-        end
-        actionBarEditManager = manager
-        if not actionBarEvents then
-            actionBarEvents = CreateFrame("Frame")
-            actionBarEvents:SetScript("OnEvent", function(_, event, addon)
-                if event ~= "ADDON_LOADED" or addon == "Blizzard_ActionBar" or addon == "Blizzard_EditMode" then
-                    Interface.ApplyActionBarFade()
-                end
-            end)
-        end
-        actionBarEvents:RegisterEvent("PLAYER_REGEN_DISABLED")
-        actionBarEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
-        actionBarEvents:RegisterEvent("PLAYER_ENTERING_WORLD")
-        if missing or not actionBarEditManager then
-            actionBarEvents:RegisterEvent("ADDON_LOADED")
-        else
-            actionBarEvents:UnregisterEvent("ADDON_LOADED")
-        end
-    elseif actionBarEvents then
-        actionBarEvents:UnregisterEvent("PLAYER_REGEN_DISABLED")
-        actionBarEvents:UnregisterEvent("PLAYER_REGEN_ENABLED")
-        actionBarEvents:UnregisterEvent("PLAYER_ENTERING_WORLD")
-        actionBarEvents:UnregisterEvent("ADDON_LOADED")
-    end
-
-    if not enabled and actionBarEditRegistry then
-        actionBarEditRegistry:UnregisterCallback("EditMode.Enter", Interface)
-        actionBarEditRegistry:UnregisterCallback("EditMode.Exit", Interface)
-        actionBarEditRegistry = nil
-    end
-
-    for frame, state in pairs(actionBarStates) do
-        if actionBarFactor < 1 then
-            if state.original == nil then
-                local alpha = frame:GetAlpha()
-                if readableAlpha(alpha) then
-                    state.original = alpha
-                end
-            end
-            if state.original ~= nil then
-                writeActionBarAlpha(frame, state, state.original * actionBarFactor)
-            end
-        elseif state.original ~= nil then
-            writeActionBarAlpha(frame, state, state.original)
-            state.original = nil
-        end
-    end
-end
-
 function Interface.ApplyAll()
-    Interface.ApplyActionBarFade()
-    Interface.ApplyMacroNames()
     Interface.ApplyMicroMenu()
     Interface.ApplyBagBar()
+    Interface.ApplyStatusBar1()
     Interface.ApplyTrackerHeaders()
-    Interface.ApplyTrackerFontSize()
     Interface.ApplyZoneText()
     Interface.ApplyBossBanner()
     Interface.ApplyTalkingHead()
     Interface.ApplyXP()
     Interface.ApplyTrackerVisibility()
-    Interface.ApplyTotemTimers()
-    Interface.ApplyHelpTips()
-    Interface.ApplyLootToasts()
 end
 
 function Interface.Initialize()
@@ -1103,6 +700,7 @@ function Interface.Initialize()
     local needsXP = MurgleDB.interface.hideXP == true
     if
         needsXP
+        or MurgleDB.interface.hideStatusBar1 == true
         or MurgleDB.interface.hideMicroMenu
         or MurgleDB.interface.hideBagBar
         or MurgleDB.interface.objectiveTrackerHeaders == true
@@ -1115,6 +713,7 @@ function Interface.Initialize()
             Interface.ApplyTrackerHeaders()
             Interface.ApplyMicroMenu()
             Interface.ApplyBagBar()
+            Interface.ApplyStatusBar1()
             Interface.ApplyXP()
         end)
     end
