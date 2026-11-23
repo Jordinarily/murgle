@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0 — 2026-11-23
+
+- Streamlined options into 5 focused subcategories under Blizzard Settings.
+- Unit frames condensed to Hide player name, Hide player frame, and unified Compact frames.
+- Minimap streamlined with Clean square minimap toggle bundling decorative frame suppression.
+- Added classic loot and quest sparkles toggle for interactable nodes and corpses.
+- Fixed voice button visibility hooks causing taint in Keybindings and Audio settings.
+- Scrapped action paging and retired disenchanting, nameplates, and obsolete options.
+
 ## 1.3.8 — 2026-11-08
 
 - Moved Murgle options into Blizzard Settings > AddOns with native controls and preserved saved choices.
